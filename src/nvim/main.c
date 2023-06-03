@@ -88,6 +88,7 @@
 #include "nvim/ui_compositor.h"
 #include "nvim/version.h"
 #include "nvim/vim.h"
+#include "nvim/wasm/executor.h"
 #include "nvim/window.h"
 #ifdef MSWIN
 # include "nvim/os/os_win_console.h"
@@ -297,6 +298,8 @@ int main(int argc, char **argv)
 
   nlua_init(argv, argc, params.lua_arg0);
   TIME_MSG("init lua interpreter");
+
+  wasm_init();
 
   if (embedded_mode) {
     const char *err;

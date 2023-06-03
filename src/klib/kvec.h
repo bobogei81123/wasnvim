@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "nvim/func_attr.h"
 #include "nvim/memory.h"
 #include "nvim/os/os_defs.h"
 

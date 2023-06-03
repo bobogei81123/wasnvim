@@ -74,6 +74,7 @@ defsfile:write(string.format([[
 #include "nvim/undo.h"
 #include "nvim/usercmd.h"
 #include "nvim/version.h"
+#include "nvim/wasm/executor.h"
 
 static const int command_count = %u;
 static CommandDefinition cmdnames[%u] = {

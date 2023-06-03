@@ -1,0 +1,20 @@
+package nvim:host
+
+world plugin {
+  /// Corresponds to nvim_exec() (:help nvim_exec)
+  import nvim-exec: func(cmd: string) -> result<_, string>
+
+  variant object {
+    nil,
+    boolean(bool),
+    integer(s64),
+    float(float64),
+    %string(string),
+  }
+
+  /// Corresponds to nvim_exec() (:help nvim_exec)
+  import nvim-call-function: func(fn: string, args: list<object>) -> result<object, string>
+
+  /// The main function of the module.
+  export run: func()
+}

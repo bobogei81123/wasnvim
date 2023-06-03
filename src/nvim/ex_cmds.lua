@@ -3150,6 +3150,12 @@ module.cmds = {
     func='do_wqall',
   },
   {
+    command='wasm',
+    flags=bit.bor(RANGE, FILE1, NEEDARG, CMDWIN, LOCK_OK),
+    addr_type='ADDR_LINES',
+    func='ex_wasm',
+  },
+  {
     command='while',
     flags=bit.bor(EXTRA, NOTRLCOM, SBOXOK, CMDWIN, LOCK_OK),
     addr_type='ADDR_NONE',

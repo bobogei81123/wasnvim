@@ -1,0 +1,8 @@
+[workspace]
+
+members = ["nvim-wasm", "nvim-sys", "nvim-rs"]
+
+[workspace.dependencies]
+nvim-rs = { path = "nvim-rs" }
+nvim-sys = { path = "nvim-sys" }
+nvim-wasm = { path = "nvim-wasm" }

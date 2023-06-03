@@ -1,126 +1,63 @@
-<h1 align="center">
-  <img src="https://raw.githubusercontent.com/neovim/neovim.github.io/master/logos/neovim-logo-300x87.png" alt="Neovim">
+This fork of [Neovim](https://github.com/neovim/neovim) aims to add a
+[WASM](https://webassembly.org/) plugin interface.
 
-  <a href="https://neovim.io/doc/">Documentation</a> |
-  <a href="https://app.element.io/#/room/#neovim:matrix.org">Chat</a>
-</h1>
+This is **not** to make Neovim able to be compiled into WASM.
 
-[![Coverity Scan analysis](https://scan.coverity.com/projects/2227/badge.svg)](https://scan.coverity.com/projects/2227)
-[![Clang analysis](https://neovim.io/doc/reports/clang/badge.svg)](https://neovim.io/doc/reports/clang)
-[![PVS-Studio analysis](https://neovim.io/doc/reports/pvs/badge.svg)](https://neovim.io/doc/reports/pvs/PVS-studio.html.d)
-[![Packages](https://repology.org/badge/tiny-repos/neovim.svg)](https://repology.org/metapackage/neovim)
-[![Debian CI](https://badges.debian.net/badges/debian/testing/neovim/version.svg)](https://buildd.debian.org/neovim)
-[![Downloads](https://img.shields.io/github/downloads/neovim/neovim/total.svg?maxAge=2592001)](https://github.com/neovim/neovim/releases/)
+Build
+--------
+Run `make` in this top-level directory. The built neovim will be located at
+`build/bin/nvim`. Try it with `build/bin/nvim -u NONE`.
 
-Neovim is a project that seeks to aggressively refactor [Vim](https://www.vim.org/) in order to:
+After building the neovim from source, run `:wasm <path-to-wasm>` to run a WASM
+binary.
 
-- Simplify maintenance and encourage [contributions](CONTRIBUTING.md)
-- Split the work between multiple developers
-- Enable [advanced UIs] without modifications to the core
-- Maximize [extensibility](https://github.com/neovim/neovim/wiki/Plugin-UI-architecture)
 
-See the [Introduction](https://github.com/neovim/neovim/wiki/Introduction) wiki page and [Roadmap]
-for more information.
-
-Features
+Examples
 --------
 
-- Modern [GUIs](https://github.com/neovim/neovim/wiki/Related-projects#gui)
-- [API access](https://github.com/neovim/neovim/wiki/Related-projects#api-clients)
-  from any language including C/C++, C#, Clojure, D, Elixir, Go, Haskell, Java/Kotlin,
-  JavaScript/Node.js, Julia, Lisp, Lua, Perl, Python, Racket, Ruby, Rust
-- Embedded, scriptable [terminal emulator](https://neovim.io/doc/user/nvim_terminal_emulator.html)
-- Asynchronous [job control](https://github.com/neovim/neovim/pull/2247)
-- [Shared data (shada)](https://github.com/neovim/neovim/pull/2506) among multiple editor instances
-- [XDG base directories](https://github.com/neovim/neovim/pull/3470) support
-- Compatible with most Vim plugins, including Ruby and Python plugins
+There are some example WASM binaries located in `wasm/example`. See the [README
+file](wasm/example/README.md) for building instructions.
 
-See [`:help nvim-features`][nvim-features] for the full list, and [`:help news`][nvim-news] for noteworthy changes in the latest version!
+WASM
+--------
 
-Install from package
---------------------
+[WebAssembly](https://webassembly.org/) (WASM) is a portable binary format. It
+is designed to be executed in a sandboxed virtual machines (hosts) safely.
+Moreover, nearly all programming language can target WASM, this includes C, C++,
+Rust, and many more.
 
-Pre-built packages for Windows, macOS, and Linux are found on the
-[Releases](https://github.com/neovim/neovim/releases/) page.
+WASM Features
+--------
 
-[Managed packages] are in [Homebrew], [Debian], [Ubuntu], [Fedora], [Arch Linux], [Void Linux], [Gentoo], and more!
+This implementation uses the following non-standardized features:
 
-Install from source
--------------------
+* [Component Model](https://github.com/WebAssembly/component-model): Without
+  the component model proposal, we will need to document how data are
+  represented and passed across the virtual machine boundary, and either Neovim
+  or the people writing WASM binary will need to implement the "glue code"
+  translating the representations. The proposal is in Phase 1: *Feature
+  Proposal* so many changes is likely before this feature is standardized.
 
-See the [Building Neovim](https://github.com/neovim/neovim/wiki/Building-Neovim) wiki page and [supported platforms](https://neovim.io/doc/user/support.html#supported-platforms) for details.
+Features that will be helpful
 
-The build is CMake-based, but a Makefile is provided as a convenience.
-After installing the dependencies, run the following command.
+* [WebAssembly C and C++ API](https://github.com/WebAssembly/wasm-c-api): This
+  will create a common interface for WASM runtimes so it is possible to
+  plug in different runtimes seamlessly.
 
-    make CMAKE_BUILD_TYPE=RelWithDebInfo
-    sudo make install
+WASM Runtimes
+--------
 
-To install to a non-default location:
+The current implmementation uses
+[Wasmtime](https://github.com/bytecodealliance/wasmtime) because it seems to be
+the only one now (2023-06) that supports the component model feature.
 
-    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX=/full/path/
-    make install
+Nvim WASM module
+--------
 
-CMake hints for inspecting the build:
+The main code for the new WASM module is located at
+[`src/nvim/rust`](src/nvim/rust). It is written in Rust because only Wasmtime
+Rust API supports Component model for now (2023-06). The C bindings is located
+at [`src/nvim/wasm`](src/nvim/wasm).
 
-- `cmake --build build --target help` lists all build targets.
-- `build/CMakeCache.txt` (or `cmake -LAH build/`) contains the resolved values of all CMake variables.
-- `build/compile_commands.json` shows the full compiler invocations for each translation unit.
-
-Transitioning from Vim
---------------------
-
-See [`:help nvim-from-vim`](https://neovim.io/doc/user/nvim.html#nvim-from-vim) for instructions.
-
-Project layout
---------------
-
-    ├─ cmake/           CMake utils
-    ├─ cmake.config/    CMake defines
-    ├─ cmake.deps/      subproject to fetch and build dependencies (optional)
-    ├─ runtime/         plugins and docs
-    ├─ src/nvim/        application source code (see src/nvim/README.md)
-    │  ├─ api/          API subsystem
-    │  ├─ eval/         Vimscript subsystem
-    │  ├─ event/        event-loop subsystem
-    │  ├─ generators/   code generation (pre-compilation)
-    │  ├─ lib/          generic data structures
-    │  ├─ lua/          Lua subsystem
-    │  ├─ msgpack_rpc/  RPC subsystem
-    │  ├─ os/           low-level platform code
-    │  └─ tui/          built-in UI
-    └─ test/            tests (see test/README.md)
-
-License
--------
-
-Neovim contributions since [b17d96][license-commit] are licensed under the
-Apache 2.0 license, except for contributions copied from Vim (identified by the
-`vim-patch` token). See LICENSE for details.
-
-    Vim is Charityware.  You can use and copy it as much as you like, but you are
-    encouraged to make a donation for needy children in Uganda.  Please see the
-    kcc section of the vim docs or visit the ICCF web site, available at these URLs:
-
-            https://iccf-holland.org/
-            https://www.vim.org/iccf/
-            https://www.iccf.nl/
-
-    You can also sponsor the development of Vim.  Vim sponsors can vote for
-    features.  The money goes to Uganda anyway.
-
-[license-commit]: https://github.com/neovim/neovim/commit/b17d9691a24099c9210289f16afb1a498a89d803
-[nvim-features]: https://neovim.io/doc/user/vim_diff.html#nvim-features
-[nvim-news]: https://neovim.io/doc/user/news.html
-[Roadmap]: https://neovim.io/roadmap/
-[advanced UIs]: https://github.com/neovim/neovim/wiki/Related-projects#gui
-[Managed packages]: https://github.com/neovim/neovim/wiki/Installing-Neovim#install-from-package
-[Debian]: https://packages.debian.org/testing/neovim
-[Ubuntu]: https://packages.ubuntu.com/search?keywords=neovim
-[Fedora]: https://packages.fedoraproject.org/pkgs/neovim/neovim/
-[Arch Linux]: https://www.archlinux.org/packages/?q=neovim
-[Void Linux]: https://voidlinux.org/packages/?arch=x86_64&q=neovim
-[Gentoo]: https://packages.gentoo.org/packages/app-editors/neovim
-[Homebrew]: https://formulae.brew.sh/formula/neovim
 
 <!-- vim: set tw=80: -->

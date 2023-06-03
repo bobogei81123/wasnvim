@@ -50,6 +50,11 @@ if (LIBINTL_LIBRARY)
   target_link_libraries(main_lib INTERFACE ${LIBINTL_LIBRARY})
 endif()
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rust)
+target_include_directories(main_lib INTERFACE nvim-rs)
+target_link_libraries(main_lib INTERFACE nvim-rs)
+
+
 # The unit test lib requires LuaJIT; it will be skipped if LuaJIT is missing.
 option(PREFER_LUA "Prefer Lua over LuaJIT in the nvim executable." OFF)
 if(PREFER_LUA)
@@ -340,6 +345,7 @@ foreach(subdir
         lua
         viml
         viml/parser
+        wasm
        )
 
   file(MAKE_DIRECTORY ${GENERATED_DIR}/${subdir})
@@ -417,6 +423,12 @@ foreach(target ${targets})
     list(APPEND gen_cflags "-I${gen_include}")
   endforeach()
 endforeach()
+
+# get_target_property(prop nvim-rs INTERFACE_INCLUDE_DIRECTORIES)
+# foreach(gen_include ${prop})
+#   message(${prop})
+#   list(APPEND gen_cflags "-I${gen_include}")
+# endforeach()
 
 if(APPLE AND CMAKE_OSX_SYSROOT)
   list(APPEND gen_cflags "-isysroot")
