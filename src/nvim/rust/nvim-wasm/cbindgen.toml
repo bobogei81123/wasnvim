@@ -1,0 +1,5 @@
+language = "C"
+
+usize_is_size_t = true
+
+includes = ["nvim/api/private/defs.h"]

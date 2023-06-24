@@ -15,4 +15,6 @@ crate-type = ["staticlib"]
 [dependencies]
 anyhow = "1.0.71"
 nvim-rs = { workspace = true }
+nvim-sys = { workspace = true }
+slab = "0.4.8"
 wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", features = ["component-model"] }

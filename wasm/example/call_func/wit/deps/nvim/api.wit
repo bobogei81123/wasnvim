@@ -1,0 +1,61 @@
+package nvim:api
+
+interface nvim-api {
+  /// Represents primitive types.
+  ///
+  /// This includes all api object types excluding array and dictionary.
+  variant primitive {
+    nil,
+    boolean(bool),
+    integer(s64),
+    float(float64),
+    %string(string),
+  }
+
+  type array = list<primitive>
+  type dictionary = list<tuple<string, primitive>>
+
+  /// Represents an object.
+  variant object {
+    nil,
+    boolean(bool),
+    integer(s64),
+    float(float64),
+    %string(string),
+    array(array),
+    dictionary(dictionary),
+  }
+
+  record exec-opts {
+    output: object
+  }
+  /// Corresponds to nvim_exec2({src}, {*opts}).
+  ///
+  /// See `:help nvim_exec`.
+  nvim-exec2: func(src: string, opts: exec-opts) -> result<dictionary, string>
+
+  /// Corresponds to nvim_call_function({fn}, {args}).
+  ///
+  /// See `:help nvim_call_function`.
+  nvim-call-function: func(fn: string, args: list<object>) -> result<object, string>
+
+
+  record option-opts {
+    scope: object,
+    win: object,
+    buf: object,
+    filetype: object,
+  }
+  /// Corresponds to nvim_get_option_value({name}, {*opts})
+  ///
+  /// See `:help nvim_get_option_value`.
+  nvim-get-option-value: func(name: string, opts: option-opts) -> result<object, string>
+  /// Corresponds to nvim_set_option_value({name}, {value}, {*opts})
+  ///
+  /// See `:help nvim_get_option_value`.
+  nvim-set-option-value: func(name: string, value: object, opts: option-opts) -> result<_, string>
+}
+
+world plugin {
+  import nvim-api
+}

@@ -226,6 +226,7 @@ output:write([[
 #include "nvim/api/ui.h"
 #include "nvim/api/vim.h"
 #include "nvim/api/vimscript.h"
+#include "nvim/api/wasm.h"
 #include "nvim/api/win_config.h"
 #include "nvim/api/window.h"
 #include "nvim/ui_client.h"

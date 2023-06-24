@@ -25,25 +25,55 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         builder = builder.clang_arg(format!("-I{}", dir.to_str().unwrap()));
     }
 
-    const TYPE_ALLOWLIST: [&str; 4] = ["String", "Error", "ErrorType", "Array"];
-    const FUNCTION_ALLOWLIST: [&str; 4] = [
-        "nvim_command",
-        "nvim_call_function",
-        "msg",
-        "emsg_multiline",
+    const TYPE_ALLOWLIST: [&str; 8] = [
+        "Array",
+        "Dictionary",
+        "Error",
+        "ErrorType",
+        "KeyDict_exec_opts",
+        "KeyDict_option",
+        "KeyValuePair",
+        "String",
     ];
+    const NON_COPY_TYPE: [&str; 4] = ["String", "Array", "Error", "Dictionary"];
+    const FUNCTION_ALLOWLIST: [&str; 20] = [
+        "api_free_array",
+        "api_free_object",
+        "api_free_string",
+        "api_free_dictionary",
+        "copy_array",
+        "copy_object",
+        "copy_dictionary",
+        "emsg_multiline",
+        "msg",
+        "nvim_call_function",
+        "nvim_command",
+        "nvim_exec2",
+        "nvim_get_option_value",
+        "nvim_set_option_value",
+        "preserve_exit",
+        "try_to_free_memory",
+        "xcalloc",
+        "xfree",
+        "xmalloc",
+        "xrealloc",
+    ];
+    const VAR_ALLOWLIST: [&str; 1] = ["e_outofmem"];
 
     for type_ in TYPE_ALLOWLIST {
         builder = builder.allowlist_type(type_);
     }
-
+    for type_ in NON_COPY_TYPE {
+        builder = builder.no_copy(type_);
+    }
     for function in FUNCTION_ALLOWLIST {
         builder = builder.allowlist_function(function);
     }
+    for var in VAR_ALLOWLIST {
+        builder = builder.allowlist_var(var);
+    }
 
     builder
-        .no_copy("Array")
-        .no_copy("Dictionary")
         .generate()?
         .write_to_file(PathBuf::from(env::var("OUT_DIR")?).join("bindings.rs"))?;
 

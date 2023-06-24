@@ -16,3 +16,6 @@ indent_size = 4
 [{Makefile,**/Makefile,runtime/doc/*.txt}]
 indent_style = tab
 indent_size = 8
+
+[*.rs]
+indent_size = 4
