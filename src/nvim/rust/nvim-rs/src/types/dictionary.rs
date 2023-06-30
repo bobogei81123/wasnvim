@@ -5,7 +5,7 @@ use std::{
     ptr,
 };
 
-use super::{NvimObject, NvimStr, NvimString};
+use super::{NvimObject, NvimString};
 
 /// Wraps a Neovim's Dictionary. (see nvim/api/private/defs.h).
 ///
@@ -150,20 +150,20 @@ impl NvimDictionaryRef {
     }
 
     /// Returns a iterator that iterates through all the entries.
-    pub fn iter(&self) -> impl Iterator<Item = (&NvimStr, &NvimObject)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&NvimString, &NvimObject)> {
         self.0.iter().map(|kv_pair| unsafe {
             (
-                NvimStr::from_ffi(&kv_pair.key),
+                NvimString::from_borrowed_ffi(&kv_pair.key),
                 NvimObject::from_ffi_ref(&kv_pair.value),
             )
         })
     }
 
     /// Returns a iterator that iterates through all the entries with mutable reference to values.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&NvimStr, &mut NvimObject)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&NvimString, &mut NvimObject)> {
         self.0.iter_mut().map(|kv_pair| unsafe {
             (
-                NvimStr::from_ffi(&kv_pair.key),
+                NvimString::from_borrowed_ffi(&kv_pair.key),
                 NvimObject::from_ffi_mut(&mut kv_pair.value),
             )
         })
@@ -174,7 +174,7 @@ impl NvimDictionaryRef {
     /// Returns None if the key is not found in the list.
     pub fn get<Q>(&self, target: &Q) -> Option<&NvimObject>
     where
-        NvimStr: Borrow<Q>,
+        NvimString: Borrow<Q>,
         Q: Eq + ?Sized,
     {
         for (key, value) in self.iter() {
@@ -191,7 +191,7 @@ impl NvimDictionaryRef {
     /// Returns None if the key is not found in the list.
     pub fn get_mut<Q>(&mut self, target: &Q) -> Option<&mut NvimObject>
     where
-        NvimStr: Borrow<Q>,
+        NvimString: Borrow<Q>,
         Q: Eq + ?Sized,
     {
         for (key, value) in self.iter_mut() {

@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "KeyValuePair",
         "String",
     ];
-    const NON_COPY_TYPE: [&str; 4] = ["String", "Array", "Error", "Dictionary"];
+    const NON_COPY_TYPE: [&str; 5] = ["String", "Array", "Error", "Dictionary", "Object"];
     const FUNCTION_ALLOWLIST: [&str; 20] = [
         "api_free_array",
         "api_free_object",
