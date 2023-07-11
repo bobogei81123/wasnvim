@@ -1,61 +1,881 @@
 package nvim:api
 
 interface nvim-api {
-  /// Represents primitive types.
+  use nvim-types.{primitive, array, dictionary, object, buffer, window, tabpage}
+use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-extmark, %keyset-keymap, %keyset-get-commands, %keyset-user-command, %keyset-float-config, %keyset-runtime, %keyset-eval-statusline, %keyset-option, %keyset-highlight, %keyset-highlight-cterm, %keyset-get-highlight, %keyset-clear-autocmds, %keyset-create-autocmd, %keyset-exec-autocmds, %keyset-get-autocmds, %keyset-create-augroup, %keyset-cmd, %keyset-cmd-magic, %keyset-cmd-mods, %keyset-cmd-mods-filter, %keyset-cmd-opts, %keyset-echo-opts, %keyset-exec-opts}
+
+  /// Corresponds to `nvim_get_autocmds`.
   ///
-  /// This includes all api object types excluding array and dictionary.
-  variant primitive {
-    nil,
-    boolean(bool),
-    integer(s64),
-    float(float64),
-    %string(string),
-  }
+  /// See `:help nvim_get_autocmds`.
+  %nvim-get-autocmds: func(%opts: %keyset-get-autocmds) -> result<list<object>, string>
 
-  type array = list<primitive>
-  type dictionary = list<tuple<string, primitive>>
-
-  /// Represents an object.
-  variant object {
-    nil,
-    boolean(bool),
-    integer(s64),
-    float(float64),
-    %string(string),
-    array(array),
-    dictionary(dictionary),
-  }
-
-  record exec-opts {
-    output: object
-  }
-  /// Corresponds to nvim_exec2({src}, {*opts}).
+  /// Corresponds to `nvim_create_autocmd`.
   ///
-  /// See `:help nvim_exec`.
-  nvim-exec2: func(src: string, opts: exec-opts) -> result<dictionary, string>
+  /// See `:help nvim_create_autocmd`.
+  %nvim-create-autocmd: func(%event: object, %opts: %keyset-create-autocmd) -> result<s64, string>
 
-  /// Corresponds to nvim_call_function({fn}, {args}).
+  /// Corresponds to `nvim_del_autocmd`.
+  ///
+  /// See `:help nvim_del_autocmd`.
+  %nvim-del-autocmd: func(%id: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_clear_autocmds`.
+  ///
+  /// See `:help nvim_clear_autocmds`.
+  %nvim-clear-autocmds: func(%opts: %keyset-clear-autocmds) -> result<_, string>
+
+  /// Corresponds to `nvim_create_augroup`.
+  ///
+  /// See `:help nvim_create_augroup`.
+  %nvim-create-augroup: func(%name: string, %opts: %keyset-create-augroup) -> result<s64, string>
+
+  /// Corresponds to `nvim_del_augroup_by_id`.
+  ///
+  /// See `:help nvim_del_augroup_by_id`.
+  %nvim-del-augroup-by-id: func(%id: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_del_augroup_by_name`.
+  ///
+  /// See `:help nvim_del_augroup_by_name`.
+  %nvim-del-augroup-by-name: func(%name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_exec_autocmds`.
+  ///
+  /// See `:help nvim_exec_autocmds`.
+  %nvim-exec-autocmds: func(%event: object, %opts: %keyset-exec-autocmds) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_line_count`.
+  ///
+  /// See `:help nvim_buf_line_count`.
+  %nvim-buf-line-count: func(%buffer: buffer) -> result<s64, string>
+
+  /// Corresponds to `nvim_buf_detach`.
+  ///
+  /// See `:help nvim_buf_detach`.
+  %nvim-buf-detach: func(%buffer: buffer) -> result<bool, string>
+
+  /// Corresponds to `nvim__buf_redraw_range`.
+  ///
+  /// See `:help nvim__buf_redraw_range`.
+  %nvim-buf-redraw-range: func(%buffer: buffer, %first: s64, %last: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_set_lines`.
+  ///
+  /// See `:help nvim_buf_set_lines`.
+  %nvim-buf-set-lines: func(%buffer: buffer, %start: s64, %end: s64, %strict-indexing: bool, %replacement: list<string>) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_set_text`.
+  ///
+  /// See `:help nvim_buf_set_text`.
+  %nvim-buf-set-text: func(%buffer: buffer, %start-row: s64, %start-col: s64, %end-row: s64, %end-col: s64, %replacement: list<string>) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_get_offset`.
+  ///
+  /// See `:help nvim_buf_get_offset`.
+  %nvim-buf-get-offset: func(%buffer: buffer, %index: s64) -> result<s64, string>
+
+  /// Corresponds to `nvim_buf_get_var`.
+  ///
+  /// See `:help nvim_buf_get_var`.
+  %nvim-buf-get-var: func(%buffer: buffer, %name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_buf_get_changedtick`.
+  ///
+  /// See `:help nvim_buf_get_changedtick`.
+  %nvim-buf-get-changedtick: func(%buffer: buffer) -> result<s64, string>
+
+  /// Corresponds to `nvim_buf_get_keymap`.
+  ///
+  /// See `:help nvim_buf_get_keymap`.
+  %nvim-buf-get-keymap: func(%buffer: buffer, %mode: string) -> result<list<list<tuple<string, object>>>, string>
+
+  /// Corresponds to `nvim_buf_set_keymap`.
+  ///
+  /// See `:help nvim_buf_set_keymap`.
+  %nvim-buf-set-keymap: func(%buffer: buffer, %mode: string, %lhs: string, %rhs: string, %opts: %keyset-keymap) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_del_keymap`.
+  ///
+  /// See `:help nvim_buf_del_keymap`.
+  %nvim-buf-del-keymap: func(%buffer: buffer, %mode: string, %lhs: string) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_set_var`.
+  ///
+  /// See `:help nvim_buf_set_var`.
+  %nvim-buf-set-var: func(%buffer: buffer, %name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_del_var`.
+  ///
+  /// See `:help nvim_buf_del_var`.
+  %nvim-buf-del-var: func(%buffer: buffer, %name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_get_name`.
+  ///
+  /// See `:help nvim_buf_get_name`.
+  %nvim-buf-get-name: func(%buffer: buffer) -> result<string, string>
+
+  /// Corresponds to `nvim_buf_set_name`.
+  ///
+  /// See `:help nvim_buf_set_name`.
+  %nvim-buf-set-name: func(%buffer: buffer, %name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_is_loaded`.
+  ///
+  /// See `:help nvim_buf_is_loaded`.
+  %nvim-buf-is-loaded: func(%buffer: buffer) -> bool
+
+  /// Corresponds to `nvim_buf_delete`.
+  ///
+  /// See `:help nvim_buf_delete`.
+  %nvim-buf-delete: func(%buffer: buffer, %opts: list<tuple<string, object>>) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_is_valid`.
+  ///
+  /// See `:help nvim_buf_is_valid`.
+  %nvim-buf-is-valid: func(%buffer: buffer) -> bool
+
+  /// Corresponds to `nvim_buf_del_mark`.
+  ///
+  /// See `:help nvim_buf_del_mark`.
+  %nvim-buf-del-mark: func(%buffer: buffer, %name: string) -> result<bool, string>
+
+  /// Corresponds to `nvim_buf_set_mark`.
+  ///
+  /// See `:help nvim_buf_set_mark`.
+  %nvim-buf-set-mark: func(%buffer: buffer, %name: string, %line: s64, %col: s64, %opts: list<tuple<string, object>>) -> result<bool, string>
+
+  /// Corresponds to `nvim__buf_stats`.
+  ///
+  /// See `:help nvim__buf_stats`.
+  %nvim-buf-stats: func(%buffer: buffer) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_parse_cmd`.
+  ///
+  /// See `:help nvim_parse_cmd`.
+  %nvim-parse-cmd: func(%str: string, %opts: list<tuple<string, object>>) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_cmd`.
+  ///
+  /// See `:help nvim_cmd`.
+  %nvim-cmd: func(%cmd: %keyset-cmd, %opts: %keyset-cmd-opts) -> result<string, string>
+
+  /// Corresponds to `nvim_create_user_command`.
+  ///
+  /// See `:help nvim_create_user_command`.
+  %nvim-create-user-command: func(%name: string, %command: object, %opts: %keyset-user-command) -> result<_, string>
+
+  /// Corresponds to `nvim_del_user_command`.
+  ///
+  /// See `:help nvim_del_user_command`.
+  %nvim-del-user-command: func(%name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_create_user_command`.
+  ///
+  /// See `:help nvim_buf_create_user_command`.
+  %nvim-buf-create-user-command: func(%buffer: buffer, %name: string, %command: object, %opts: %keyset-user-command) -> result<_, string>
+
+  /// Corresponds to `nvim_buf_del_user_command`.
+  ///
+  /// See `:help nvim_buf_del_user_command`.
+  %nvim-buf-del-user-command: func(%buffer: buffer, %name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_get_commands`.
+  ///
+  /// See `:help nvim_get_commands`.
+  %nvim-get-commands: func(%opts: %keyset-get-commands) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_buf_get_commands`.
+  ///
+  /// See `:help nvim_buf_get_commands`.
+  %nvim-buf-get-commands: func(%buffer: buffer, %opts: %keyset-get-commands) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_get_option_info`.
+  ///
+  /// See `:help nvim_get_option_info`.
+  %nvim-get-option-info: func(%name: string) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_set_option`.
+  ///
+  /// See `:help nvim_set_option`.
+  %nvim-set-option: func(%name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_get_option`.
+  ///
+  /// See `:help nvim_get_option`.
+  %nvim-get-option: func(%name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_buf_get_option`.
+  ///
+  /// See `:help nvim_buf_get_option`.
+  %nvim-buf-get-option: func(%buffer: buffer, %name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_buf_set_option`.
+  ///
+  /// See `:help nvim_buf_set_option`.
+  %nvim-buf-set-option: func(%buffer: buffer, %name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_option`.
+  ///
+  /// See `:help nvim_win_get_option`.
+  %nvim-win-get-option: func(%window: window, %name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_win_set_option`.
+  ///
+  /// See `:help nvim_win_set_option`.
+  %nvim-win-set-option: func(%window: window, %name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `api_extmark_free_all_mem`.
+  ///
+  /// See `:help api_extmark_free_all_mem`.
+  %api-extmark-free-all-mem: func()
+
+  /// Corresponds to `nvim_create_namespace`.
+  ///
+  /// See `:help nvim_create_namespace`.
+  %nvim-create-namespace: func(%name: string) -> s64
+
+  /// Corresponds to `nvim_get_namespaces`.
+  ///
+  /// See `:help nvim_get_namespaces`.
+  %nvim-get-namespaces: func() -> list<tuple<string, object>>
+
+  /// Corresponds to `nvim_buf_get_extmark_by_id`.
+  ///
+  /// See `:help nvim_buf_get_extmark_by_id`.
+  %nvim-buf-get-extmark-by-id: func(%buffer: buffer, %ns-id: s64, %id: s64, %opts: list<tuple<string, object>>) -> result<list<s64>, string>
+
+  /// Corresponds to `nvim_buf_get_extmarks`.
+  ///
+  /// See `:help nvim_buf_get_extmarks`.
+  %nvim-buf-get-extmarks: func(%buffer: buffer, %ns-id: s64, %start: object, %end: object, %opts: list<tuple<string, object>>) -> result<list<object>, string>
+
+  /// Corresponds to `nvim_buf_set_extmark`.
+  ///
+  /// See `:help nvim_buf_set_extmark`.
+  %nvim-buf-set-extmark: func(%buffer: buffer, %ns-id: s64, %line: s64, %col: s64, %opts: %keyset-set-extmark) -> result<s64, string>
+
+  /// Corresponds to `nvim_buf_del_extmark`.
+  ///
+  /// See `:help nvim_buf_del_extmark`.
+  %nvim-buf-del-extmark: func(%buffer: buffer, %ns-id: s64, %id: s64) -> result<bool, string>
+
+  /// Corresponds to `nvim_buf_add_highlight`.
+  ///
+  /// See `:help nvim_buf_add_highlight`.
+  %nvim-buf-add-highlight: func(%buffer: buffer, %ns-id: s64, %hl-group: string, %line: s64, %col-start: s64, %col-end: s64) -> result<s64, string>
+
+  /// Corresponds to `nvim_buf_clear_namespace`.
+  ///
+  /// See `:help nvim_buf_clear_namespace`.
+  %nvim-buf-clear-namespace: func(%buffer: buffer, %ns-id: s64, %line-start: s64, %line-end: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_get_option_value`.
+  ///
+  /// See `:help nvim_get_option_value`.
+  %nvim-get-option-value: func(%name: string, %opts: %keyset-option) -> result<object, string>
+
+  /// Corresponds to `nvim_set_option_value`.
+  ///
+  /// See `:help nvim_set_option_value`.
+  %nvim-set-option-value: func(%name: string, %value: object, %opts: %keyset-option) -> result<_, string>
+
+  /// Corresponds to `nvim_get_all_options_info`.
+  ///
+  /// See `:help nvim_get_all_options_info`.
+  %nvim-get-all-options-info: func() -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_get_option_info2`.
+  ///
+  /// See `:help nvim_get_option_info2`.
+  %nvim-get-option-info2: func(%name: string, %opts: %keyset-option) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_tabpage_list_wins`.
+  ///
+  /// See `:help nvim_tabpage_list_wins`.
+  %nvim-tabpage-list-wins: func(%tabpage: tabpage) -> result<list<window>, string>
+
+  /// Corresponds to `nvim_tabpage_get_var`.
+  ///
+  /// See `:help nvim_tabpage_get_var`.
+  %nvim-tabpage-get-var: func(%tabpage: tabpage, %name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_tabpage_set_var`.
+  ///
+  /// See `:help nvim_tabpage_set_var`.
+  %nvim-tabpage-set-var: func(%tabpage: tabpage, %name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_tabpage_del_var`.
+  ///
+  /// See `:help nvim_tabpage_del_var`.
+  %nvim-tabpage-del-var: func(%tabpage: tabpage, %name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_tabpage_get_win`.
+  ///
+  /// See `:help nvim_tabpage_get_win`.
+  %nvim-tabpage-get-win: func(%tabpage: tabpage) -> result<window, string>
+
+  /// Corresponds to `nvim_tabpage_get_number`.
+  ///
+  /// See `:help nvim_tabpage_get_number`.
+  %nvim-tabpage-get-number: func(%tabpage: tabpage) -> result<s64, string>
+
+  /// Corresponds to `nvim_tabpage_is_valid`.
+  ///
+  /// See `:help nvim_tabpage_is_valid`.
+  %nvim-tabpage-is-valid: func(%tabpage: tabpage) -> bool
+
+  /// Corresponds to `remote_ui_disconnect`.
+  ///
+  /// See `:help remote_ui_disconnect`.
+  %remote-ui-disconnect: func()
+
+  /// Corresponds to `remote_ui_wait_for_attach`.
+  ///
+  /// See `:help remote_ui_wait_for_attach`.
+  %remote-ui-wait-for-attach: func()
+
+  /// Corresponds to `nvim_ui_attach`.
+  ///
+  /// See `:help nvim_ui_attach`.
+  %nvim-ui-attach: func(%width: s64, %height: s64, %options: list<tuple<string, object>>) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_set_focus`.
+  ///
+  /// See `:help nvim_ui_set_focus`.
+  %nvim-ui-set-focus: func(%gained: bool) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_detach`.
+  ///
+  /// See `:help nvim_ui_detach`.
+  %nvim-ui-detach: func() -> result<_, string>
+
+  /// Corresponds to `nvim_ui_try_resize`.
+  ///
+  /// See `:help nvim_ui_try_resize`.
+  %nvim-ui-try-resize: func(%width: s64, %height: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_set_option`.
+  ///
+  /// See `:help nvim_ui_set_option`.
+  %nvim-ui-set-option: func(%name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_try_resize_grid`.
+  ///
+  /// See `:help nvim_ui_try_resize_grid`.
+  %nvim-ui-try-resize-grid: func(%grid: s64, %width: s64, %height: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_pum_set_height`.
+  ///
+  /// See `:help nvim_ui_pum_set_height`.
+  %nvim-ui-pum-set-height: func(%height: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_ui_pum_set_bounds`.
+  ///
+  /// See `:help nvim_ui_pum_set_bounds`.
+  %nvim-ui-pum-set-bounds: func(%width: float64, %height: float64, %row: float64, %col: float64) -> result<_, string>
+
+  /// Corresponds to `nvim_get_hl_id_by_name`.
+  ///
+  /// See `:help nvim_get_hl_id_by_name`.
+  %nvim-get-hl-id-by-name: func(%name: string) -> s64
+
+  /// Corresponds to `nvim_get_hl`.
+  ///
+  /// See `:help nvim_get_hl`.
+  %nvim-get-hl: func(%ns-id: s64, %opts: %keyset-get-highlight) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_set_hl`.
+  ///
+  /// See `:help nvim_set_hl`.
+  %nvim-set-hl: func(%ns-id: s64, %name: string, %val: %keyset-highlight) -> result<_, string>
+
+  /// Corresponds to `nvim_set_hl_ns`.
+  ///
+  /// See `:help nvim_set_hl_ns`.
+  %nvim-set-hl-ns: func(%ns-id: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_set_hl_ns_fast`.
+  ///
+  /// See `:help nvim_set_hl_ns_fast`.
+  %nvim-set-hl-ns-fast: func(%ns-id: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_feedkeys`.
+  ///
+  /// See `:help nvim_feedkeys`.
+  %nvim-feedkeys: func(%keys: string, %mode: string, %escape-ks: bool)
+
+  /// Corresponds to `nvim_input`.
+  ///
+  /// See `:help nvim_input`.
+  %nvim-input: func(%keys: string) -> s64
+
+  /// Corresponds to `nvim_input_mouse`.
+  ///
+  /// See `:help nvim_input_mouse`.
+  %nvim-input-mouse: func(%button: string, %action: string, %modifier: string, %grid: s64, %row: s64, %col: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_replace_termcodes`.
+  ///
+  /// See `:help nvim_replace_termcodes`.
+  %nvim-replace-termcodes: func(%str: string, %from-part: bool, %do-lt: bool, %special: bool) -> string
+
+  /// Corresponds to `nvim_exec_lua`.
+  ///
+  /// See `:help nvim_exec_lua`.
+  %nvim-exec-lua: func(%code: string, %args: list<object>) -> result<object, string>
+
+  /// Corresponds to `nvim_notify`.
+  ///
+  /// See `:help nvim_notify`.
+  %nvim-notify: func(%msg: string, %log-level: s64, %opts: list<tuple<string, object>>) -> result<object, string>
+
+  /// Corresponds to `nvim_strwidth`.
+  ///
+  /// See `:help nvim_strwidth`.
+  %nvim-strwidth: func(%text: string) -> result<s64, string>
+
+  /// Corresponds to `nvim_list_runtime_paths`.
+  ///
+  /// See `:help nvim_list_runtime_paths`.
+  %nvim-list-runtime-paths: func() -> result<list<string>, string>
+
+  /// Corresponds to `nvim__runtime_inspect`.
+  ///
+  /// See `:help nvim__runtime_inspect`.
+  %nvim-runtime-inspect: func() -> list<object>
+
+  /// Corresponds to `nvim_get_runtime_file`.
+  ///
+  /// See `:help nvim_get_runtime_file`.
+  %nvim-get-runtime-file: func(%name: string, %all: bool) -> result<list<string>, string>
+
+  /// Corresponds to `nvim__get_lib_dir`.
+  ///
+  /// See `:help nvim__get_lib_dir`.
+  %nvim-get-lib-dir: func() -> string
+
+  /// Corresponds to `nvim__get_runtime`.
+  ///
+  /// See `:help nvim__get_runtime`.
+  %nvim-get-runtime: func(%pat: list<object>, %all: bool, %opts: %keyset-runtime) -> result<list<string>, string>
+
+  /// Corresponds to `nvim_set_current_dir`.
+  ///
+  /// See `:help nvim_set_current_dir`.
+  %nvim-set-current-dir: func(%dir: string) -> result<_, string>
+
+  /// Corresponds to `nvim_get_current_line`.
+  ///
+  /// See `:help nvim_get_current_line`.
+  %nvim-get-current-line: func() -> result<string, string>
+
+  /// Corresponds to `nvim_set_current_line`.
+  ///
+  /// See `:help nvim_set_current_line`.
+  %nvim-set-current-line: func(%line: string) -> result<_, string>
+
+  /// Corresponds to `nvim_del_current_line`.
+  ///
+  /// See `:help nvim_del_current_line`.
+  %nvim-del-current-line: func() -> result<_, string>
+
+  /// Corresponds to `nvim_get_var`.
+  ///
+  /// See `:help nvim_get_var`.
+  %nvim-get-var: func(%name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_set_var`.
+  ///
+  /// See `:help nvim_set_var`.
+  %nvim-set-var: func(%name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_del_var`.
+  ///
+  /// See `:help nvim_del_var`.
+  %nvim-del-var: func(%name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_get_vvar`.
+  ///
+  /// See `:help nvim_get_vvar`.
+  %nvim-get-vvar: func(%name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_set_vvar`.
+  ///
+  /// See `:help nvim_set_vvar`.
+  %nvim-set-vvar: func(%name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_echo`.
+  ///
+  /// See `:help nvim_echo`.
+  %nvim-echo: func(%chunks: list<object>, %history: bool, %opts: %keyset-echo-opts) -> result<_, string>
+
+  /// Corresponds to `nvim_out_write`.
+  ///
+  /// See `:help nvim_out_write`.
+  %nvim-out-write: func(%str: string)
+
+  /// Corresponds to `nvim_err_write`.
+  ///
+  /// See `:help nvim_err_write`.
+  %nvim-err-write: func(%str: string)
+
+  /// Corresponds to `nvim_err_writeln`.
+  ///
+  /// See `:help nvim_err_writeln`.
+  %nvim-err-writeln: func(%str: string)
+
+  /// Corresponds to `nvim_list_bufs`.
+  ///
+  /// See `:help nvim_list_bufs`.
+  %nvim-list-bufs: func() -> list<buffer>
+
+  /// Corresponds to `nvim_get_current_buf`.
+  ///
+  /// See `:help nvim_get_current_buf`.
+  %nvim-get-current-buf: func() -> buffer
+
+  /// Corresponds to `nvim_set_current_buf`.
+  ///
+  /// See `:help nvim_set_current_buf`.
+  %nvim-set-current-buf: func(%buffer: buffer) -> result<_, string>
+
+  /// Corresponds to `nvim_list_wins`.
+  ///
+  /// See `:help nvim_list_wins`.
+  %nvim-list-wins: func() -> list<window>
+
+  /// Corresponds to `nvim_get_current_win`.
+  ///
+  /// See `:help nvim_get_current_win`.
+  %nvim-get-current-win: func() -> window
+
+  /// Corresponds to `nvim_set_current_win`.
+  ///
+  /// See `:help nvim_set_current_win`.
+  %nvim-set-current-win: func(%window: window) -> result<_, string>
+
+  /// Corresponds to `nvim_create_buf`.
+  ///
+  /// See `:help nvim_create_buf`.
+  %nvim-create-buf: func(%listed: bool, %scratch: bool) -> result<buffer, string>
+
+  /// Corresponds to `nvim_list_tabpages`.
+  ///
+  /// See `:help nvim_list_tabpages`.
+  %nvim-list-tabpages: func() -> list<tabpage>
+
+  /// Corresponds to `nvim_get_current_tabpage`.
+  ///
+  /// See `:help nvim_get_current_tabpage`.
+  %nvim-get-current-tabpage: func() -> tabpage
+
+  /// Corresponds to `nvim_set_current_tabpage`.
+  ///
+  /// See `:help nvim_set_current_tabpage`.
+  %nvim-set-current-tabpage: func(%tabpage: tabpage) -> result<_, string>
+
+  /// Corresponds to `nvim_paste`.
+  ///
+  /// See `:help nvim_paste`.
+  %nvim-paste: func(%data: string, %crlf: bool, %phase: s64) -> result<bool, string>
+
+  /// Corresponds to `nvim_put`.
+  ///
+  /// See `:help nvim_put`.
+  %nvim-put: func(%lines: list<string>, %type: string, %after: bool, %follow: bool) -> result<_, string>
+
+  /// Corresponds to `nvim_subscribe`.
+  ///
+  /// See `:help nvim_subscribe`.
+  %nvim-subscribe: func(%event: string)
+
+  /// Corresponds to `nvim_unsubscribe`.
+  ///
+  /// See `:help nvim_unsubscribe`.
+  %nvim-unsubscribe: func(%event: string)
+
+  /// Corresponds to `nvim_get_color_by_name`.
+  ///
+  /// See `:help nvim_get_color_by_name`.
+  %nvim-get-color-by-name: func(%name: string) -> s64
+
+  /// Corresponds to `nvim_get_color_map`.
+  ///
+  /// See `:help nvim_get_color_map`.
+  %nvim-get-color-map: func() -> list<tuple<string, object>>
+
+  /// Corresponds to `nvim_get_context`.
+  ///
+  /// See `:help nvim_get_context`.
+  %nvim-get-context: func(%opts: %keyset-context) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_load_context`.
+  ///
+  /// See `:help nvim_load_context`.
+  %nvim-load-context: func(%dict: list<tuple<string, object>>) -> object
+
+  /// Corresponds to `nvim_get_mode`.
+  ///
+  /// See `:help nvim_get_mode`.
+  %nvim-get-mode: func() -> list<tuple<string, object>>
+
+  /// Corresponds to `nvim_get_keymap`.
+  ///
+  /// See `:help nvim_get_keymap`.
+  %nvim-get-keymap: func(%mode: string) -> list<list<tuple<string, object>>>
+
+  /// Corresponds to `nvim_set_keymap`.
+  ///
+  /// See `:help nvim_set_keymap`.
+  %nvim-set-keymap: func(%mode: string, %lhs: string, %rhs: string, %opts: %keyset-keymap) -> result<_, string>
+
+  /// Corresponds to `nvim_del_keymap`.
+  ///
+  /// See `:help nvim_del_keymap`.
+  %nvim-del-keymap: func(%mode: string, %lhs: string) -> result<_, string>
+
+  /// Corresponds to `nvim_get_api_info`.
+  ///
+  /// See `:help nvim_get_api_info`.
+  %nvim-get-api-info: func() -> list<object>
+
+  /// Corresponds to `nvim_set_client_info`.
+  ///
+  /// See `:help nvim_set_client_info`.
+  %nvim-set-client-info: func(%name: string, %version: list<tuple<string, object>>, %type: string, %methods: list<tuple<string, object>>, %attributes: list<tuple<string, object>>) -> result<_, string>
+
+  /// Corresponds to `nvim_get_chan_info`.
+  ///
+  /// See `:help nvim_get_chan_info`.
+  %nvim-get-chan-info: func(%chan: s64) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_list_chans`.
+  ///
+  /// See `:help nvim_list_chans`.
+  %nvim-list-chans: func() -> list<object>
+
+  /// Corresponds to `nvim_call_atomic`.
+  ///
+  /// See `:help nvim_call_atomic`.
+  %nvim-call-atomic: func(%calls: list<object>) -> result<list<object>, string>
+
+  /// Corresponds to `nvim__id`.
+  ///
+  /// See `:help nvim__id`.
+  %nvim-id: func(%obj: object) -> object
+
+  /// Corresponds to `nvim__id_array`.
+  ///
+  /// See `:help nvim__id_array`.
+  %nvim-id-array: func(%arr: list<object>) -> list<object>
+
+  /// Corresponds to `nvim__id_dictionary`.
+  ///
+  /// See `:help nvim__id_dictionary`.
+  %nvim-id-dictionary: func(%dct: list<tuple<string, object>>) -> list<tuple<string, object>>
+
+  /// Corresponds to `nvim__id_float`.
+  ///
+  /// See `:help nvim__id_float`.
+  %nvim-id-float: func(%flt: float64) -> float64
+
+  /// Corresponds to `nvim__stats`.
+  ///
+  /// See `:help nvim__stats`.
+  %nvim-stats: func() -> list<tuple<string, object>>
+
+  /// Corresponds to `nvim_list_uis`.
+  ///
+  /// See `:help nvim_list_uis`.
+  %nvim-list-uis: func() -> list<object>
+
+  /// Corresponds to `nvim_get_proc_children`.
+  ///
+  /// See `:help nvim_get_proc_children`.
+  %nvim-get-proc-children: func(%pid: s64) -> result<list<object>, string>
+
+  /// Corresponds to `nvim_get_proc`.
+  ///
+  /// See `:help nvim_get_proc`.
+  %nvim-get-proc: func(%pid: s64) -> result<object, string>
+
+  /// Corresponds to `nvim_select_popupmenu_item`.
+  ///
+  /// See `:help nvim_select_popupmenu_item`.
+  %nvim-select-popupmenu-item: func(%item: s64, %insert: bool, %finish: bool, %opts: list<tuple<string, object>>) -> result<_, string>
+
+  /// Corresponds to `nvim__inspect_cell`.
+  ///
+  /// See `:help nvim__inspect_cell`.
+  %nvim-inspect-cell: func(%grid: s64, %row: s64, %col: s64) -> result<list<object>, string>
+
+  /// Corresponds to `nvim__screenshot`.
+  ///
+  /// See `:help nvim__screenshot`.
+  %nvim-screenshot: func(%path: string)
+
+  /// Corresponds to `nvim__unpack`.
+  ///
+  /// See `:help nvim__unpack`.
+  %nvim-unpack: func(%str: string) -> result<object, string>
+
+  /// Corresponds to `nvim_del_mark`.
+  ///
+  /// See `:help nvim_del_mark`.
+  %nvim-del-mark: func(%name: string) -> result<bool, string>
+
+  /// Corresponds to `nvim_get_mark`.
+  ///
+  /// See `:help nvim_get_mark`.
+  %nvim-get-mark: func(%name: string, %opts: list<tuple<string, object>>) -> result<list<object>, string>
+
+  /// Corresponds to `nvim_eval_statusline`.
+  ///
+  /// See `:help nvim_eval_statusline`.
+  %nvim-eval-statusline: func(%str: string, %opts: %keyset-eval-statusline) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_error_event`.
+  ///
+  /// See `:help nvim_error_event`.
+  %nvim-error-event: func(%lvl: s64, %data: string)
+
+  /// Corresponds to `nvim_exec2`.
+  ///
+  /// See `:help nvim_exec2`.
+  %nvim-exec2: func(%src: string, %opts: %keyset-exec-opts) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `exec_impl`.
+  ///
+  /// See `:help exec_impl`.
+  %exec-impl: func(%src: string, %opts: %keyset-exec-opts) -> result<string, string>
+
+  /// Corresponds to `nvim_command`.
+  ///
+  /// See `:help nvim_command`.
+  %nvim-command: func(%command: string) -> result<_, string>
+
+  /// Corresponds to `nvim_eval`.
+  ///
+  /// See `:help nvim_eval`.
+  %nvim-eval: func(%expr: string) -> result<object, string>
+
+  /// Corresponds to `nvim_call_function`.
   ///
   /// See `:help nvim_call_function`.
-  nvim-call-function: func(fn: string, args: list<object>) -> result<object, string>
+  %nvim-call-function: func(%fn: string, %args: list<object>) -> result<object, string>
 
+  /// Corresponds to `nvim_call_dict_function`.
+  ///
+  /// See `:help nvim_call_dict_function`.
+  %nvim-call-dict-function: func(%dict: object, %fn: string, %args: list<object>) -> result<object, string>
 
-  record option-opts {
-    scope: object,
-    win: object,
-    buf: object,
-    filetype: object,
-  }
-  /// Corresponds to nvim_get_option_value({name}, {*opts})
+  /// Corresponds to `nvim_parse_expression`.
   ///
-  /// See `:help nvim_get_option_value`.
-  nvim-get-option-value: func(name: string, opts: option-opts) -> result<object, string>
-  /// Corresponds to nvim_set_option_value({name}, {value}, {*opts})
+  /// See `:help nvim_parse_expression`.
+  %nvim-parse-expression: func(%expr: string, %flags: string, %highlight: bool) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_wasm_load`.
   ///
-  /// See `:help nvim_get_option_value`.
-  nvim-set-option-value: func(name: string, value: object, opts: option-opts) -> result<_, string>
+  /// See `:help nvim_wasm_load`.
+  %nvim-wasm-load: func(%file: string) -> result<s64, string>
+
+  /// Corresponds to `nvim_wasm_call_func`.
+  ///
+  /// See `:help nvim_wasm_call_func`.
+  %nvim-wasm-call-func: func(%instance-id: s64, %func-name: string, %args: list<object>) -> result<object, string>
+
+  /// Corresponds to `nvim_open_win`.
+  ///
+  /// See `:help nvim_open_win`.
+  %nvim-open-win: func(%buffer: buffer, %enter: bool, %config: %keyset-float-config) -> result<window, string>
+
+  /// Corresponds to `nvim_win_set_config`.
+  ///
+  /// See `:help nvim_win_set_config`.
+  %nvim-win-set-config: func(%window: window, %config: %keyset-float-config) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_config`.
+  ///
+  /// See `:help nvim_win_get_config`.
+  %nvim-win-get-config: func(%window: window) -> result<list<tuple<string, object>>, string>
+
+  /// Corresponds to `nvim_win_get_buf`.
+  ///
+  /// See `:help nvim_win_get_buf`.
+  %nvim-win-get-buf: func(%window: window) -> result<buffer, string>
+
+  /// Corresponds to `nvim_win_set_buf`.
+  ///
+  /// See `:help nvim_win_set_buf`.
+  %nvim-win-set-buf: func(%window: window, %buffer: buffer) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_height`.
+  ///
+  /// See `:help nvim_win_get_height`.
+  %nvim-win-get-height: func(%window: window) -> result<s64, string>
+
+  /// Corresponds to `nvim_win_set_height`.
+  ///
+  /// See `:help nvim_win_set_height`.
+  %nvim-win-set-height: func(%window: window, %height: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_width`.
+  ///
+  /// See `:help nvim_win_get_width`.
+  %nvim-win-get-width: func(%window: window) -> result<s64, string>
+
+  /// Corresponds to `nvim_win_set_width`.
+  ///
+  /// See `:help nvim_win_set_width`.
+  %nvim-win-set-width: func(%window: window, %width: s64) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_var`.
+  ///
+  /// See `:help nvim_win_get_var`.
+  %nvim-win-get-var: func(%window: window, %name: string) -> result<object, string>
+
+  /// Corresponds to `nvim_win_set_var`.
+  ///
+  /// See `:help nvim_win_set_var`.
+  %nvim-win-set-var: func(%window: window, %name: string, %value: object) -> result<_, string>
+
+  /// Corresponds to `nvim_win_del_var`.
+  ///
+  /// See `:help nvim_win_del_var`.
+  %nvim-win-del-var: func(%window: window, %name: string) -> result<_, string>
+
+  /// Corresponds to `nvim_win_get_tabpage`.
+  ///
+  /// See `:help nvim_win_get_tabpage`.
+  %nvim-win-get-tabpage: func(%window: window) -> result<tabpage, string>
+
+  /// Corresponds to `nvim_win_get_number`.
+  ///
+  /// See `:help nvim_win_get_number`.
+  %nvim-win-get-number: func(%window: window) -> result<s64, string>
+
+  /// Corresponds to `nvim_win_is_valid`.
+  ///
+  /// See `:help nvim_win_is_valid`.
+  %nvim-win-is-valid: func(%window: window) -> bool
+
+  /// Corresponds to `nvim_win_hide`.
+  ///
+  /// See `:help nvim_win_hide`.
+  %nvim-win-hide: func(%window: window) -> result<_, string>
+
+  /// Corresponds to `nvim_win_close`.
+  ///
+  /// See `:help nvim_win_close`.
+  %nvim-win-close: func(%window: window, %force: bool) -> result<_, string>
+
+  /// Corresponds to `nvim_win_set_hl_ns`.
+  ///
+  /// See `:help nvim_win_set_hl_ns`.
+  %nvim-win-set-hl-ns: func(%window: window, %ns-id: s64) -> result<_, string>
 }
 
 world plugin {
   import nvim-api
 }
+

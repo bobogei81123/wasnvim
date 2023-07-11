@@ -1,0 +1,14 @@
+[package]
+name = "gen-api-func-lib"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "print-apis"
+
+[[bin]]
+name = "gen-wit"
+
+[dependencies]
+anyhow = "1.0.71"
+indoc = "2"

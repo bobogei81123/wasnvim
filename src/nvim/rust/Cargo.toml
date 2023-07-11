@@ -1,8 +1,9 @@
 [workspace]
 
-members = ["nvim-wasm", "nvim-sys", "nvim-rs"]
+members = ["nvim-wasm", "nvim-sys", "nvim-rs", "gen-api-func-lib"]
 
 [workspace.dependencies]
 nvim-rs = { path = "nvim-rs" }
 nvim-sys = { path = "nvim-sys" }
 nvim-wasm = { path = "nvim-wasm" }
+gen-api-func-lib = { path = "gen-api-func-lib" }

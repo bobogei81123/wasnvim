@@ -4,13 +4,10 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use nvim::api::nvim_api;
-use nvim_rs::{
-    slice_from_borrowed_ffi,
-    types::{NvimDictionary, NvimObject, NvimResult},
-};
+use nvim::api::{nvim_api, nvim_keysets, nvim_types};
+use nvim_rs::{slice_from_ffi_ref, types::NvimObject};
 use slab::Slab;
-use types::WasmType;
+use types::{FromWasmType, TryIntoWasmType};
 use wasmtime::{
     component::{Component, Instance, Linker, TypedFunc},
     Engine, Store,
@@ -72,7 +69,7 @@ pub unsafe extern "C" fn wasm_call_func(
     let func_name = CStr::from_ptr(func_name)
         .to_str()
         .expect("Function name is not a valid utf-8 string");
-    let args = slice_from_borrowed_ffi(&args);
+    let args = slice_from_ffi_ref(&args);
     let result = wasm_call_func_impl(instance_id, func_name, args);
 
     unwrap_or_set_error_and_return(result, errmsg, NvimObject::nil()).into_ffi()
@@ -188,142 +185,24 @@ fn wasm_call_func_impl(
         })?;
     let args = args
         .iter()
-        .map(|obj| nvim_api::Object::try_from_host(obj.clone()))
-        .collect::<std::result::Result<Vec<_>, _>>()?;
+        .map(|obj| Ok(obj.clone().try_into_wasm_type()?))
+        .collect::<Result<Vec<_>>>()?;
 
     let (result,) = func.call(&mut mutate_state.store, (args,)).with_context(|| {
       format!("The function call to {func_name} trapped (an runtime exception is raised) or failed")
     })?;
-    Ok(result.into_host())
+    Ok(NvimObject::from_wasm_type(result))
 }
 
 // This generates all the types and interface defined in the wit file.
 wasmtime::component::bindgen!("plugin");
+
 /// Implements the host bindings.
 ///
 /// See `wit/nvim.wit` for the definition of the host bindings.
 struct NvimHost;
 
-impl nvim_api::Host for NvimHost {
-    fn nvim_exec2(
-        &mut self,
-        cmd: String,
-        opts: nvim_api::ExecOpts,
-    ) -> wasmtime::Result<Result<nvim_api::Dictionary, String>> {
-        let inner = move || -> Result<nvim_api::Dictionary> {
-            let cmd = cmd.into_host();
-            let output = opts.output.into_host();
-            let mut opts = nvim_sys::KeyDict_exec_opts {
-                output: output.as_borrowed_ffi(),
-            };
-            let mut result = NvimResult::new_ok();
-            unsafe {
-                let retval = NvimDictionary::from_ffi(nvim_sys::nvim_exec2(
-                    (1u64 << 63) + 1,
-                    cmd.as_borrowed_ffi(),
-                    &mut opts,
-                    result.as_borrowed_ffi_mut(),
-                ));
-                if let Err(err) = result.into_result() {
-                    return Err(err.into());
-                }
-                Ok(nvim_api::Dictionary::try_from_host(retval)?)
-            }
-        };
-        Ok(inner().map_err(|err| err.to_string()))
-    }
+include!(concat!(env!("OUT_DIR"), "/api_impl.rs"));
 
-    fn nvim_call_function(
-        &mut self,
-        r#fn: String,
-        args: Vec<nvim_api::Object>,
-    ) -> wasmtime::Result<Result<nvim_api::Object, String>> {
-        let inner = move || -> Result<nvim_api::Object> {
-            let r#fn = r#fn.into_host();
-            let args = args.into_host();
-            let mut result = NvimResult::new_ok();
-            unsafe {
-                let retval = NvimObject::from_ffi(nvim_sys::nvim_call_function(
-                    r#fn.as_borrowed_ffi(),
-                    args.as_borrowed_ffi(),
-                    result.as_borrowed_ffi_mut(),
-                ));
-                if let Err(err) = result.into_result() {
-                    return Err(err.into());
-                }
-                Ok(nvim_api::Object::try_from_host(retval)?)
-            }
-        };
-        Ok(inner().map_err(|err| err.to_string()))
-    }
-
-    fn nvim_get_option_value(
-        &mut self,
-        name: String,
-        opts: nvim_api::OptionOpts,
-    ) -> wasmtime::Result<Result<nvim_api::Object, String>> {
-        let inner = move || -> Result<nvim_api::Object> {
-            let name = name.into_host();
-            let scope = opts.scope.into_host();
-            let win = opts.win.into_host();
-            let buf = opts.buf.into_host();
-            let filetype = opts.filetype.into_host();
-            let mut opts = nvim_sys::KeyDict_option {
-                scope: scope.as_borrowed_ffi(),
-                win: win.as_borrowed_ffi(),
-                buf: buf.as_borrowed_ffi(),
-                filetype: filetype.as_borrowed_ffi(),
-            };
-            let mut result = NvimResult::new_ok();
-            unsafe {
-                let retval = NvimObject::from_ffi(nvim_sys::nvim_get_option_value(
-                    name.as_borrowed_ffi(),
-                    &mut opts,
-                    result.as_borrowed_ffi_mut(),
-                ));
-                if let Err(err) = result.into_result() {
-                    return Err(err.into());
-                }
-                Ok(nvim_api::Object::try_from_host(retval)?)
-            }
-        };
-        Ok(inner().map_err(|err| err.to_string()))
-    }
-
-    fn nvim_set_option_value(
-        &mut self,
-        name: String,
-        value: nvim_api::Object,
-        opts: nvim_api::OptionOpts,
-    ) -> wasmtime::Result<Result<(), String>> {
-        let inner = move || -> Result<()> {
-            let name = name.into_host();
-            let value = value.into_host();
-            let scope = opts.scope.into_host();
-            let win = opts.win.into_host();
-            let buf = opts.buf.into_host();
-            let filetype = opts.filetype.into_host();
-            let mut opts = nvim_sys::KeyDict_option {
-                scope: scope.as_borrowed_ffi(),
-                win: win.as_borrowed_ffi(),
-                buf: buf.as_borrowed_ffi(),
-                filetype: filetype.as_borrowed_ffi(),
-            };
-            let mut result = NvimResult::new_ok();
-            unsafe {
-                nvim_sys::nvim_set_option_value(
-                    (1u64 << 63) + 1,
-                    name.as_borrowed_ffi(),
-                    value.as_borrowed_ffi(),
-                    &mut opts,
-                    result.as_borrowed_ffi_mut(),
-                );
-                if let Err(err) = result.into_result() {
-                    return Err(err.into());
-                }
-                Ok(())
-            }
-        };
-        Ok(inner().map_err(|err| err.to_string()))
-    }
-}
+impl nvim_types::Host for NvimHost {}
+impl nvim_keysets::Host for NvimHost {}

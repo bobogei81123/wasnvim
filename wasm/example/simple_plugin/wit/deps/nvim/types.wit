@@ -1,0 +1,37 @@
+package nvim:api
+
+interface nvim-types {
+  /// Represents primitive types.
+  ///
+  /// This includes all api object types excluding array and dictionary.
+  variant primitive {
+    nil,
+    boolean(bool),
+    integer(s64),
+    float(float64),
+    %string(string),
+    buffer(buffer),
+    window(window),
+    tabpage(tabpage),
+  }
+
+  type array = list<primitive>
+  type dictionary = list<tuple<string, primitive>>
+  type buffer = s64
+  type window = s64
+  type tabpage = s64
+
+  /// Represents an object.
+  variant object {
+    nil,
+    boolean(bool),
+    integer(s64),
+    float(float64),
+    %string(string),
+    array(array),
+    dictionary(dictionary),
+    buffer(buffer),
+    window(window),
+    tabpage(tabpage),
+  }
+}

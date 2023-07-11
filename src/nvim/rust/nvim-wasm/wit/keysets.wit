@@ -1,0 +1,269 @@
+package nvim:api
+
+interface nvim-keysets {
+  use nvim-types.{object}
+
+  record %keyset-context {
+    %types: object,
+  }
+
+  record %keyset-set-decoration-provider {
+    %on-start: object,
+    %on-buf: object,
+    %on-win: object,
+    %on-line: object,
+    %on-end: object,
+    %on-hl-def: object,
+    %on-spell-nav: object,
+  }
+
+  record %keyset-set-extmark {
+    %id: object,
+    %end-line: object,
+    %end-row: object,
+    %end-col: object,
+    %hl-group: object,
+    %virt-text: object,
+    %virt-text-pos: object,
+    %virt-text-win-col: object,
+    %virt-text-hide: object,
+    %hl-eol: object,
+    %hl-mode: object,
+    %ephemeral: object,
+    %priority: object,
+    %right-gravity: object,
+    %end-right-gravity: object,
+    %virt-lines: object,
+    %virt-lines-above: object,
+    %virt-lines-leftcol: object,
+    %strict: object,
+    %sign-text: object,
+    %sign-hl-group: object,
+    %number-hl-group: object,
+    %line-hl-group: object,
+    %cursorline-hl-group: object,
+    %conceal: object,
+    %spell: object,
+    %ui-watched: object,
+  }
+
+  record %keyset-keymap {
+    %noremap: object,
+    %nowait: object,
+    %silent: object,
+    %script: object,
+    %expr: object,
+    %unique: object,
+    %callback: object,
+    %desc: object,
+    %replace-keycodes: object,
+  }
+
+  record %keyset-get-commands {
+    %builtin: object,
+  }
+
+  record %keyset-user-command {
+    %addr: object,
+    %bang: object,
+    %bar: object,
+    %complete: object,
+    %count: object,
+    %desc: object,
+    %force: object,
+    %keepscript: object,
+    %nargs: object,
+    %preview: object,
+    %range: object,
+    %register: object,
+  }
+
+  record %keyset-float-config {
+    %row: object,
+    %col: object,
+    %width: object,
+    %height: object,
+    %anchor: object,
+    %relative: object,
+    %win: object,
+    %bufpos: object,
+    %external: object,
+    %focusable: object,
+    %zindex: object,
+    %border: object,
+    %title: object,
+    %title-pos: object,
+    %style: object,
+    %noautocmd: object,
+  }
+
+  record %keyset-runtime {
+    %is-lua: object,
+    %do-source: object,
+  }
+
+  record %keyset-eval-statusline {
+    %winid: object,
+    %maxwidth: object,
+    %fillchar: object,
+    %highlights: object,
+    %use-winbar: object,
+    %use-tabline: object,
+    %use-statuscol-lnum: object,
+  }
+
+  record %keyset-option {
+    %scope: object,
+    %win: object,
+    %buf: object,
+    %filetype: object,
+  }
+
+  record %keyset-highlight {
+    %bold: object,
+    %standout: object,
+    %strikethrough: object,
+    %underline: object,
+    %undercurl: object,
+    %underdouble: object,
+    %underdotted: object,
+    %underdashed: object,
+    %italic: object,
+    %reverse: object,
+    %altfont: object,
+    %nocombine: object,
+    %default: object,
+    %cterm: object,
+    %foreground: object,
+    %fg: object,
+    %background: object,
+    %bg: object,
+    %ctermfg: object,
+    %ctermbg: object,
+    %special: object,
+    %sp: object,
+    %link: object,
+    %global-link: object,
+    %fallback: object,
+    %blend: object,
+    %fg-indexed: object,
+    %bg-indexed: object,
+  }
+
+  record %keyset-highlight-cterm {
+    %bold: object,
+    %standout: object,
+    %strikethrough: object,
+    %underline: object,
+    %undercurl: object,
+    %underdouble: object,
+    %underdotted: object,
+    %underdashed: object,
+    %italic: object,
+    %reverse: object,
+    %altfont: object,
+    %nocombine: object,
+  }
+
+  record %keyset-get-highlight {
+    %id: object,
+    %name: object,
+    %link: object,
+  }
+
+  record %keyset-clear-autocmds {
+    %buffer: object,
+    %event: object,
+    %group: object,
+    %pattern: object,
+  }
+
+  record %keyset-create-autocmd {
+    %buffer: object,
+    %callback: object,
+    %command: object,
+    %desc: object,
+    %group: object,
+    %nested: object,
+    %once: object,
+    %pattern: object,
+  }
+
+  record %keyset-exec-autocmds {
+    %buffer: object,
+    %group: object,
+    %modeline: object,
+    %pattern: object,
+    %data: object,
+  }
+
+  record %keyset-get-autocmds {
+    %event: object,
+    %group: object,
+    %pattern: object,
+    %buffer: object,
+  }
+
+  record %keyset-create-augroup {
+    %clear: object,
+  }
+
+  record %keyset-cmd {
+    %cmd: object,
+    %range: object,
+    %count: object,
+    %reg: object,
+    %bang: object,
+    %args: object,
+    %magic: object,
+    %mods: object,
+    %nargs: object,
+    %addr: object,
+    %nextcmd: object,
+  }
+
+  record %keyset-cmd-magic {
+    %file: object,
+    %bar: object,
+  }
+
+  record %keyset-cmd-mods {
+    %silent: object,
+    %emsg-silent: object,
+    %unsilent: object,
+    %filter: object,
+    %sandbox: object,
+    %noautocmd: object,
+    %browse: object,
+    %confirm: object,
+    %hide: object,
+    %horizontal: object,
+    %keepalt: object,
+    %keepjumps: object,
+    %keepmarks: object,
+    %keeppatterns: object,
+    %lockmarks: object,
+    %noswapfile: object,
+    %tab: object,
+    %verbose: object,
+    %vertical: object,
+    %split: object,
+  }
+
+  record %keyset-cmd-mods-filter {
+    %pattern: object,
+    %force: object,
+  }
+
+  record %keyset-cmd-opts {
+    %output: object,
+  }
+
+  record %keyset-echo-opts {
+    %verbose: object,
+  }
+
+  record %keyset-exec-opts {
+    %output: object,
+  }
+}

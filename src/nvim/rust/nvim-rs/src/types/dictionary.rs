@@ -1,52 +1,26 @@
-use std::{
-    borrow::Borrow,
-    mem::{self, ManuallyDrop},
-    ops::Deref,
-    ptr,
-};
+use std::{borrow::Borrow, mem, ops::Deref, ptr};
 
-use super::{NvimObject, NvimString};
+use super::{
+    ffi_wrapper::{NvimFfiClone, NvimFfiType, NvimFfiWrapper},
+    NvimObject, NvimString,
+};
 
 /// Wraps a Neovim's Dictionary. (see nvim/api/private/defs.h).
 ///
 /// Neovim's API dictionary type is nothing more than a vector of key-value pairs.
 /// The keys are strings and the values are objects.
-#[derive(Default)]
-pub struct NvimDictionary(nvim_sys::Dictionary);
+pub type NvimDictionary = NvimFfiWrapper<nvim_sys::Dictionary>;
 
 impl NvimDictionary {
     /// Creates an empty Neovim dictionary.
     pub fn new() -> Self {
-        Self(nvim_sys::Dictionary {
-            items: ptr::null_mut(),
-            size: 0,
-            capacity: 0,
-        })
-    }
-
-    /// Creates an `NvimDictionary` from an owned FFI dictionary.
-    ///
-    /// # Safety
-    /// The caller must owned the dictionary and ensure that it remains valid throughout the
-    /// lifetime of this object.
-    pub unsafe fn from_ffi(dict: nvim_sys::Dictionary) -> Self {
-        Self(dict)
-    }
-
-    /// Converts this dictionary into an owned FFI dictionary.
-    ///
-    /// The caller is then responsible for freeing the dictionary.
-    pub fn into_ffi(self) -> nvim_sys::Dictionary {
-        let me = ManuallyDrop::new(self);
-        me.as_borrowed_ffi()
-    }
-
-    /// Converts this dictionary into an borrowed FFI dictionary.
-    ///
-    /// The returned FFI dictionary is only a borrow, so the caller is responsible to make sure
-    /// that it remain intact throughout the time it is borrowed.
-    pub fn as_borrowed_ffi(&self) -> nvim_sys::Dictionary {
-        unsafe { ptr::read(&self.0) }
+        unsafe {
+            Self::from_ffi(nvim_sys::Dictionary {
+                items: ptr::null_mut(),
+                size: 0,
+                capacity: 0,
+            })
+        }
     }
 
     /// Creates a new dictionary from a vector of key-value pairs.
@@ -63,11 +37,13 @@ impl NvimDictionary {
         let items = vec.as_mut_ptr() as *mut nvim_sys::KeyValuePair;
         mem::forget(vec);
 
-        Self(nvim_sys::Dictionary {
-            items,
-            size,
-            capacity,
-        })
+        unsafe {
+            Self::from_ffi(nvim_sys::Dictionary {
+                items,
+                size,
+                capacity,
+            })
+        }
     }
 
     /// Converts this dictionary into a vector of key-value pairs.
@@ -85,23 +61,24 @@ impl NvimDictionary {
     }
 }
 
-impl Drop for NvimDictionary {
-    fn drop(&mut self) {
+impl Default for NvimDictionary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl NvimFfiType for nvim_sys::Dictionary {
+    fn ffi_drop(self) {
         unsafe {
-            nvim_sys::api_free_dictionary(self.as_borrowed_ffi());
+            nvim_sys::api_free_dictionary(self);
         }
     }
 }
 
-impl Clone for NvimDictionary {
+unsafe impl NvimFfiClone for nvim_sys::Dictionary {
     /// Returns a deep copy of this dictionary.
-    fn clone(&self) -> Self {
-        unsafe {
-            NvimDictionary::from_ffi(nvim_sys::copy_dictionary(
-                self.as_borrowed_ffi(),
-                ptr::null_mut(),
-            ))
-        }
+    fn ffi_clone(self) -> Self {
+        unsafe { nvim_sys::copy_dictionary(self, ptr::null_mut()) }
     }
 }
 
@@ -110,7 +87,8 @@ impl Deref for NvimDictionary {
 
     fn deref(&self) -> &Self::Target {
         unsafe {
-            &*(ptr::slice_from_raw_parts(self.0.items, self.0.size) as *const NvimDictionaryRef)
+            &*(ptr::slice_from_raw_parts(self.as_ffi_ref().items, self.as_ffi_ref().size)
+                as *const NvimDictionaryRef)
         }
     }
 }
@@ -153,7 +131,7 @@ impl NvimDictionaryRef {
     pub fn iter(&self) -> impl Iterator<Item = (&NvimString, &NvimObject)> {
         self.0.iter().map(|kv_pair| unsafe {
             (
-                NvimString::from_borrowed_ffi(&kv_pair.key),
+                NvimString::from_ffi_ref(&kv_pair.key),
                 NvimObject::from_ffi_ref(&kv_pair.value),
             )
         })
@@ -163,7 +141,7 @@ impl NvimDictionaryRef {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&NvimString, &mut NvimObject)> {
         self.0.iter_mut().map(|kv_pair| unsafe {
             (
-                NvimString::from_borrowed_ffi(&kv_pair.key),
+                NvimString::from_ffi_ref(&kv_pair.key),
                 NvimObject::from_ffi_mut(&mut kv_pair.value),
             )
         })

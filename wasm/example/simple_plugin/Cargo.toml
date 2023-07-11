@@ -1,0 +1,16 @@
+[package]
+name = "simple_plugin"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", version = "0.8.0" }
+#
+# [profile.dev]
+# panic = "abort"
+#
+# [profile.release]
+# panic = "abort"

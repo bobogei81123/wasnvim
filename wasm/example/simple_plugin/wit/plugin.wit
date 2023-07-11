@@ -1,0 +1,10 @@
+package example:call-func
+
+use nvim:api/nvim-api
+
+world plugin {
+  import nvim-api
+  use nvim-api.{object}
+
+  export run: func(args: list<object>) -> object
+}

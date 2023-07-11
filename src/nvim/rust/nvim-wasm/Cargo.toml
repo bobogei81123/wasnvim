@@ -6,15 +6,16 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
-# [[bin]]
-# name = "test"
-# path = "src/bin.rs"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = "1.0.71"
 nvim-rs = { workspace = true }
 nvim-sys = { workspace = true }
 slab = "0.4.8"
-wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", features = ["component-model"] }
+wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", features = [
+  "component-model",
+] }
+
+[build-dependencies]
+gen-api-func-lib = { workspace = true }
+proc-macro2 = "1.0.64"
+quote = "1.0.29"

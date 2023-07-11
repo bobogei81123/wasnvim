@@ -1,35 +1,26 @@
-use std::{mem::{ManuallyDrop, self}, ffi::{CString, c_char}, fmt::Display};
+use std::{
+    ffi::{c_char, CString},
+    fmt::Display,
+};
+
+use super::ffi_wrapper::{NvimFfiType, NvimFfiWrapper};
 
 /// Represents the result of calling neovim functions.
 ///
 /// It wraps nvim's `Error` (see nvim/api/private/defs.h) and resembles `Result<(), NvimError>` in
 /// rust. Nvim's `Error` has a "none" state which makes it more like `Result` than an `Error`, in
 /// Rust's point of view.
-pub struct NvimResult(ManuallyDrop<nvim_sys::Error>);
+pub type NvimResult = NvimFfiWrapper<nvim_sys::Error>;
 
 impl NvimResult {
     /// Creates a new Ok `NvimResult`.
     pub fn new_ok() -> Self {
-        Self(ManuallyDrop::new(nvim_sys::Error {
-            type_: nvim_sys::ErrorType_kErrorTypeNone,
-            msg: std::ptr::null_mut(),
-        }))
-    }
-
-    /// Consumes this object and returns an Neovim's `Error`.
-    ///
-    /// The caller is responsible for freeing the returned `Error`.
-    pub fn into_ffi(mut self) -> nvim_sys::Error {
-        let inner = unsafe { ManuallyDrop::take(&mut self.0) };
-        mem::forget(self);
-        inner
-    }
-
-    /// Returns a borrowed Neovim `Error`.
-    ///
-    /// The caller must make sure that the object remain valid when the borrow ended.
-    pub fn as_borrowed_ffi_mut(&mut self) -> &mut nvim_sys::Error {
-        &mut self.0
+        unsafe {
+            Self::from_ffi(nvim_sys::Error {
+                type_: nvim_sys::ErrorType_kErrorTypeNone,
+                msg: std::ptr::null_mut(),
+            })
+        }
     }
 
     /// Creates an NvimResult from Rust's [`Result`](std::result::Result) type.
@@ -45,7 +36,8 @@ impl NvimResult {
                 (type_, msg)
             }
         };
-        Self(ManuallyDrop::new(nvim_sys::Error { type_, msg }))
+
+        unsafe { Self::from_ffi(nvim_sys::Error { type_, msg }) }
     }
 
     /// Converts this object into a Rust [`Result`](std::result::Result).
@@ -71,9 +63,9 @@ impl NvimResult {
     }
 }
 
-impl Drop for NvimResult {
-    fn drop(&mut self) {
-        unsafe { nvim_sys::xfree_clear(&mut self.0.msg) }
+impl NvimFfiType for nvim_sys::Error {
+    fn ffi_drop(mut self) {
+        unsafe { nvim_sys::api_clear_error(&mut self) }
     }
 }
 
