@@ -18,6 +18,13 @@ typedef int handle_T;
 // absent callback etc.
 typedef int LuaRef;
 
+// Opaque handle to a WASM value. Must be free with `api_free_wasmref` when
+// not needed anymore!
+typedef struct {
+  int instance_id;
+  int ref;
+} WasmRef;
+
 /// Type used for Vimscript VAR_FLOAT values
 typedef double float_T;
 

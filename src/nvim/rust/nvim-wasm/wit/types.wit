@@ -34,4 +34,19 @@ interface nvim-types {
     window(window),
     tabpage(tabpage),
   }
+
+  /// Represents callbacks that can be call from Neovim.
+  ///
+  /// This is a temporary workaround before we have resource types. The number
+  /// is the handle referring to the callback function. If this type is used,
+  /// two additional functions should be defined:
+  ///
+  /// /// Invokes the callback function represented by the handle `callback`.
+  /// component-call-callback(handle: callback, args: list<object>)
+  ///
+  /// /// Frees the callback.
+  /// ///
+  /// /// This will be called once the callback is not needed by Neovim.
+  /// component-free-callback(handle: callback, args: list<object>)
+  type callback = s32
 }

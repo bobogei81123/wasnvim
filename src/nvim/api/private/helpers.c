@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "klib/kvec.h"
 #include "nvim/api/private/converter.h"
 #include "nvim/api/private/defs.h"
 #include "nvim/api/private/helpers.h"
@@ -31,8 +30,11 @@
 #include "nvim/message.h"
 #include "nvim/msgpack_rpc/helpers.h"
 #include "nvim/pos.h"
+#include "nvim/rust/nvim-wasm/include/wasm-rs.h"
 #include "nvim/ui.h"
 #include "nvim/version.h"
+
+#include "klib/kvec.h"
 
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "api/private/funcs_metadata.generated.h"
@@ -51,7 +53,7 @@ void try_enter(TryState *const tstate)
   // TODO(ZyX-I): Check whether try_enter()/try_leave() may use
   //              enter_cleanup()/leave_cleanup(). Or
   //              save_dbg_stuff()/restore_dbg_stuff().
-  *tstate = (TryState) {
+  *tstate = (TryState){
     .current_exception = current_exception,
     .msg_list = (const msglist_T *const *)msg_list,
     .private_msg_list = NULL,
@@ -79,8 +81,8 @@ void try_enter(TryState *const tstate)
 /// @param[out]  err  Location where error should be saved.
 ///
 /// @return false if error occurred, true otherwise.
-bool try_leave(const TryState *const tstate, Error *const err)
-  FUNC_ATTR_NONNULL_ALL FUNC_ATTR_WARN_UNUSED_RESULT
+bool try_leave(const TryState *const tstate,
+               Error *const err) FUNC_ATTR_NONNULL_ALL FUNC_ATTR_WARN_UNUSED_RESULT
 {
   const bool ret = !try_end(err);
   assert(trylevel == 0);
@@ -139,10 +141,7 @@ bool try_end(Error *err)
     got_int = false;
   } else if (msg_list != NULL && *msg_list != NULL) {
     int should_free;
-    char *msg = get_exception_string(*msg_list,
-                                     ET_ERROR,
-                                     NULL,
-                                     &should_free);
+    char *msg = get_exception_string(*msg_list, ET_ERROR, NULL, &should_free);
     api_set_error(err, kErrorTypeException, "%s", msg);
     free_global_msglist();
 
@@ -156,8 +155,8 @@ bool try_end(Error *err)
                       current_exception->throw_name, current_exception->throw_lnum,
                       current_exception->value);
       } else {
-        api_set_error(err, kErrorTypeException, "%s: %s",
-                      current_exception->throw_name, current_exception->value);
+        api_set_error(err, kErrorTypeException, "%s: %s", current_exception->throw_name,
+                      current_exception->value);
       }
     } else {
       api_set_error(err, kErrorTypeException, "%s", current_exception->value);
@@ -234,8 +233,7 @@ Object dict_set_var(dict_T *dict, String key, Object value, bool del, bool retva
     // Delete the key
     if (di == NULL) {
       // Doesn't exist, fail
-      api_set_error(err, kErrorTypeValidation, "Key not found: %s",
-                    key.data);
+      api_set_error(err, kErrorTypeValidation, "Key not found: %s", key.data);
     } else {
       // Notify watchers
       if (watched) {
@@ -345,10 +343,7 @@ tabpage_T *find_tab_by_handle(Tabpage tabpage, Error *err)
 String cchar_to_string(char c)
 {
   char buf[] = { c, NUL };
-  return (String){
-    .data = xmemdupz(buf, 1),
-    .size = (c != NUL) ? 1 : 0
-  };
+  return (String){ .data = xmemdupz(buf, 1), .size = (c != NUL) ? 1 : 0 };
 }
 
 /// Copies a C string into a String (binary safe string, characters + length).
@@ -375,8 +370,7 @@ String cstr_to_string(const char *str)
 ///
 /// @param str the String to copy
 /// @return the resulting C string
-char *string_to_cstr(String str)
-  FUNC_ATTR_NONNULL_RET FUNC_ATTR_WARN_UNUSED_RESULT
+char *string_to_cstr(String str) FUNC_ATTR_NONNULL_RET FUNC_ATTR_WARN_UNUSED_RESULT
 {
   return xstrndup(str.data, str.size);
 }
@@ -389,23 +383,17 @@ char *string_to_cstr(String str)
 /// @param size length of the buffer
 /// @return the resulting String, if the input string was NULL, an
 ///         empty String is returned
-String cbuf_to_string(const char *buf, size_t size)
-  FUNC_ATTR_NONNULL_ALL
+String cbuf_to_string(const char *buf, size_t size) FUNC_ATTR_NONNULL_ALL
 {
-  return (String){
-    .data = xmemdupz(buf, size),
-    .size = size
-  };
+  return (String){ .data = xmemdupz(buf, size), .size = size };
 }
 
-String cstrn_to_string(const char *str, size_t maxsize)
-  FUNC_ATTR_NONNULL_ALL
+String cstrn_to_string(const char *str, size_t maxsize) FUNC_ATTR_NONNULL_ALL
 {
   return cbuf_to_string(str, strnlen(str, maxsize));
 }
 
-String cstrn_as_string(char *str, size_t maxsize)
-  FUNC_ATTR_NONNULL_ALL
+String cstrn_as_string(char *str, size_t maxsize) FUNC_ATTR_NONNULL_ALL
 {
   return cbuf_as_string(str, strnlen(str, maxsize));
 }
@@ -599,6 +587,10 @@ void api_free_object(Object value)
     api_free_luaref(value.data.luaref);
     break;
 
+  case kObjectTypeWasmRef:
+    api_free_wasmref(value.data.wasmref);
+    break;
+
   default:
     abort();
   }
@@ -623,8 +615,7 @@ void api_free_dictionary(Dictionary value)
   xfree(value.items);
 }
 
-void api_clear_error(Error *value)
-  FUNC_ATTR_NONNULL_ALL
+void api_clear_error(Error *value) FUNC_ATTR_NONNULL_ALL
 {
   if (!ERROR_SET(value)) {
     return;
@@ -654,10 +645,8 @@ static void init_function_metadata(Dictionary *metadata)
 {
   msgpack_unpacked unpacked;
   msgpack_unpacked_init(&unpacked);
-  if (msgpack_unpack_next(&unpacked,
-                          (const char *)funcs_metadata,
-                          sizeof(funcs_metadata),
-                          NULL) != MSGPACK_UNPACK_SUCCESS) {
+  if (msgpack_unpack_next(&unpacked, (const char *)funcs_metadata, sizeof(funcs_metadata), NULL)
+      != MSGPACK_UNPACK_SUCCESS) {
     abort();
   }
   Object functions;
@@ -670,10 +659,9 @@ static void init_ui_event_metadata(Dictionary *metadata)
 {
   msgpack_unpacked unpacked;
   msgpack_unpacked_init(&unpacked);
-  if (msgpack_unpack_next(&unpacked,
-                          (const char *)ui_events_metadata,
-                          sizeof(ui_events_metadata),
-                          NULL) != MSGPACK_UNPACK_SUCCESS) {
+  if (msgpack_unpack_next(&unpacked, (const char *)ui_events_metadata, sizeof(ui_events_metadata),
+                          NULL)
+      != MSGPACK_UNPACK_SUCCESS) {
     abort();
   }
   Object ui_events;
@@ -711,18 +699,15 @@ static void init_type_metadata(Dictionary *metadata)
   Dictionary types = ARRAY_DICT_INIT;
 
   Dictionary buffer_metadata = ARRAY_DICT_INIT;
-  PUT(buffer_metadata, "id",
-      INTEGER_OBJ(kObjectTypeBuffer - EXT_OBJECT_TYPE_SHIFT));
+  PUT(buffer_metadata, "id", INTEGER_OBJ(kObjectTypeBuffer - EXT_OBJECT_TYPE_SHIFT));
   PUT(buffer_metadata, "prefix", CSTR_TO_OBJ("nvim_buf_"));
 
   Dictionary window_metadata = ARRAY_DICT_INIT;
-  PUT(window_metadata, "id",
-      INTEGER_OBJ(kObjectTypeWindow - EXT_OBJECT_TYPE_SHIFT));
+  PUT(window_metadata, "id", INTEGER_OBJ(kObjectTypeWindow - EXT_OBJECT_TYPE_SHIFT));
   PUT(window_metadata, "prefix", CSTR_TO_OBJ("nvim_win_"));
 
   Dictionary tabpage_metadata = ARRAY_DICT_INIT;
-  PUT(tabpage_metadata, "id",
-      INTEGER_OBJ(kObjectTypeTabpage - EXT_OBJECT_TYPE_SHIFT));
+  PUT(tabpage_metadata, "id", INTEGER_OBJ(kObjectTypeTabpage - EXT_OBJECT_TYPE_SHIFT));
   PUT(tabpage_metadata, "prefix", CSTR_TO_OBJ("nvim_tabpage_"));
 
   PUT(types, "Buffer", DICTIONARY_OBJ(buffer_metadata));
@@ -775,6 +760,7 @@ Object copy_object(Object obj, Arena *arena)
   case kObjectTypeBoolean:
   case kObjectTypeInteger:
   case kObjectTypeFloat:
+  case kObjectTypeWasmRef:
     return obj;
 
   case kObjectTypeString:
@@ -794,8 +780,8 @@ Object copy_object(Object obj, Arena *arena)
   }
 }
 
-void api_set_error(Error *err, ErrorType errType, const char *format, ...)
-  FUNC_ATTR_NONNULL_ALL FUNC_ATTR_PRINTF(3, 4)
+void api_set_error(Error *err, ErrorType errType, const char *format, ...) FUNC_ATTR_NONNULL_ALL
+  FUNC_ATTR_PRINTF(3, 4)
 {
   assert(kErrorTypeNone != errType);
   va_list args1;
@@ -872,6 +858,8 @@ char *api_typename(ObjectType t)
     return "Window";
   case kObjectTypeTabpage:
     return "Tabpage";
+  case kObjectTypeWasmRef:
+    return "WasmRef";
   default:
     abort();
   }
@@ -886,11 +874,9 @@ HlMessage parse_hl_msg(Array chunks, Error *err)
       goto free_exit;
     }
     Array chunk = chunks.items[i].data.array;
-    if (chunk.size == 0 || chunk.size > 2
-        || chunk.items[0].type != kObjectTypeString
+    if (chunk.size == 0 || chunk.size > 2 || chunk.items[0].type != kObjectTypeString
         || (chunk.size == 2 && chunk.items[1].type != kObjectTypeString)) {
-      api_set_error(err, kErrorTypeValidation,
-                    "Chunk is not an array with one or two strings");
+      api_set_error(err, kErrorTypeValidation, "Chunk is not an array with one or two strings");
       goto free_exit;
     }
 
@@ -969,11 +955,9 @@ bool set_mark(buf_T *buf, String name, Integer line, Integer col, Error *err)
   res = setmark_pos(*name.data, &pos, buf->handle, NULL);
   if (!res) {
     if (deleting) {
-      api_set_error(err, kErrorTypeException,
-                    "Failed to delete named mark: %c", *name.data);
+      api_set_error(err, kErrorTypeException, "Failed to delete named mark: %c", *name.data);
     } else {
-      api_set_error(err, kErrorTypeException,
-                    "Failed to set named mark: %c", *name.data);
+      api_set_error(err, kErrorTypeException, "Failed to set named mark: %c", *name.data);
     }
   }
   return res;
@@ -1016,9 +1000,17 @@ sctx_T api_set_sctx(uint64_t channel_id)
 {
   sctx_T old_current_sctx = current_sctx;
   if (channel_id != VIML_INTERNAL_CALL) {
-    current_sctx.sc_sid =
-      channel_id == LUA_INTERNAL_CALL ? SID_LUA : SID_API_CLIENT;
+    current_sctx.sc_sid = channel_id == LUA_INTERNAL_CALL ? SID_LUA : SID_API_CLIENT;
     current_sctx.sc_lnum = 0;
   }
   return old_current_sctx;
+}
+
+ExternalCallback object_to_ext_callback(Object obj)
+{
+  // switch 
+  // return
+  // {
+  //   .
+  // }
 }

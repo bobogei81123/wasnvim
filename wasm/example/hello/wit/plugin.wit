@@ -8,4 +8,6 @@ world plugin {
   use nvim-api.{object}
 
   export run: func(args: list<object>) -> object
+
+  export haha-hehe: func()
 }

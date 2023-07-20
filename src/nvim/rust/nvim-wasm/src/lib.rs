@@ -75,6 +75,19 @@ pub unsafe extern "C" fn wasm_call_func(
     unwrap_or_set_error_and_return(result, errmsg, NvimObject::nil()).into_ffi()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wasm_call_wasmref(wasmref: nvim_sys::WasmRef, args: nvim_sys::Array) {
+    const COMPONENT_CALL_CALLBACK_FUNCNAME: &str = "component-call-callback";
+    let args = slice_from_ffi_ref(&args);
+    let _ = wasm_call_func_impl(wasmref.instance_id, COMPONENT_CALL_CALLBACK_FUNCNAME, args);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn api_free_wasmref(wasmref: nvim_sys::WasmRef) {
+    const COMPONENT_FREE_CALLBACK_FUNCNAME: &str = "component-free-callback";
+    let _ = wasm_call_func_impl(wasmref.instance_id, COMPONENT_FREE_CALLBACK_FUNCNAME, &[]);
+}
+
 unsafe fn unwrap_or_set_error_and_return<T>(
     result: Result<T>,
     errmsg: *mut *const c_char,

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "nvim/api/private/defs.h"
+#include "nvim/types.h"
 
 /**
  * Initializes the Nvim WASM module.
@@ -29,3 +30,7 @@ int32_t wasm_load_file(const char *file_path, const char **errmsg);
  * Calls a function from a WASM instance
  */
 Object wasm_call_func(int32_t instance_id, const char *func_name, Array args, const char **errmsg);
+
+void wasm_call_wasmref(WasmRef wasmref);
+
+void api_free_wasmref(WasmRef wasmref);

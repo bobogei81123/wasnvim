@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         builder = builder.clang_arg(format!("-I{}", dir.to_str().unwrap()));
     }
 
-    const TYPE_ALLOWLIST: [&str; 7] = [
+    const TYPE_ALLOWLIST: [&str; 8] = [
         "Arena",
         "Array",
         "Dictionary",
@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "ErrorType",
         "KeyValuePair",
         "String",
+        "WasmRef",
     ];
     const NON_COPY_TYPE: [&str; 6] = ["Arena", "String", "Array", "Error", "Dictionary", "Object"];
 

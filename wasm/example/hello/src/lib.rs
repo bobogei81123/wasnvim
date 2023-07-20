@@ -13,6 +13,9 @@ impl Plugin for MyPlugin {
 
         Object::Nil
     }
+
+    fn haha_hehe() {
+    }
 }
 
 export_plugin!(MyPlugin);

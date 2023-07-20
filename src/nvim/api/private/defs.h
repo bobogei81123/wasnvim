@@ -104,6 +104,7 @@ typedef enum {
   kObjectTypeBuffer,
   kObjectTypeWindow,
   kObjectTypeTabpage,
+  kObjectTypeWasmRef,
 } ObjectType;
 
 struct object {
@@ -116,6 +117,7 @@ struct object {
     Array array;
     Dictionary dictionary;
     LuaRef luaref;
+    WasmRef wasmref;
   } data;
 };
 
@@ -129,5 +131,18 @@ typedef struct {
   char *str;
   size_t ptr_off;
 } KeySetLink;
+
+typedef enum {
+  kExternalCallbackTypeLua,
+  kExternalCallbackTypeWasm,
+} ExternalCallbackType;
+
+typedef struct {
+  ExternalCallbackType type;
+  union {
+    LuaRef luaref;
+    WasmRef wasmref;
+  } data;
+} ExternalCallback;
 
 #endif  // NVIM_API_PRIVATE_DEFS_H
