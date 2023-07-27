@@ -1,9 +1,11 @@
+#include "nvim/api/wasm.h"
+
 #include "nvim/api/private/defs.h"
 #include "nvim/api/private/helpers.h"
 #include "nvim/rust/nvim-wasm/include/wasm-rs.h"
 
 #ifdef INCLUDE_GENERATED_DECLARATIONS
-# include "api/autocmd.c.generated.h"
+# include "api/wasm.c.generated.h"
 #endif
 
 Integer nvim_wasm_load(String file, Error *error) FUNC_API_SINCE(99)

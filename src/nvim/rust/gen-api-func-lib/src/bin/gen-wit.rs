@@ -193,7 +193,7 @@ impl<'a> Display for DisplayType<'a> {
             }) => write!(f, "list<tuple<string, {}>>", DisplayType(inner_type)),
             Dictionary(_) => write!(f, "list<tuple<string, object>>"),
             Keyset(keyset) => write!(f, "%{}", keyset.wit_name()),
-            LuaRef => write!(f, "lua_ref"),
+            LuaRef => write!(f, "object"),
             Buffer => write!(f, "buffer"),
             Window => write!(f, "window"),
             Tabpage => write!(f, "tabpage"),

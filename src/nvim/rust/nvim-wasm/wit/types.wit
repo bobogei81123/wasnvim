@@ -13,6 +13,7 @@ interface nvim-types {
     buffer(buffer),
     window(window),
     tabpage(tabpage),
+    wasmref(callback),
   }
 
   type array = list<primitive>
@@ -33,6 +34,7 @@ interface nvim-types {
     buffer(buffer),
     window(window),
     tabpage(tabpage),
+    wasmref(callback),
   }
 
   /// Represents callbacks that can be call from Neovim.

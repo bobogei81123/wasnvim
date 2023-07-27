@@ -133,6 +133,7 @@ typedef struct {
 } KeySetLink;
 
 typedef enum {
+  kExternalCallbackTypeNone,
   kExternalCallbackTypeLua,
   kExternalCallbackTypeWasm,
 } ExternalCallbackType;
@@ -144,5 +145,7 @@ typedef struct {
     WasmRef wasmref;
   } data;
 } ExternalCallback;
+
+#define EXTERNAL_CALLBACK_NONE { .type = kExternalCallbackTypeNone }
 
 #endif  // NVIM_API_PRIVATE_DEFS_H

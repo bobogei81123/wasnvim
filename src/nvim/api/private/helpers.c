@@ -15,6 +15,7 @@
 #include "nvim/api/private/converter.h"
 #include "nvim/api/private/defs.h"
 #include "nvim/api/private/helpers.h"
+#include "nvim/api/private/validate.h"
 #include "nvim/ascii.h"
 #include "nvim/buffer_defs.h"
 #include "nvim/eval/typval.h"
@@ -1006,11 +1007,50 @@ sctx_T api_set_sctx(uint64_t channel_id)
   return old_current_sctx;
 }
 
-ExternalCallback object_to_ext_callback(Object obj)
+ExternalCallback object_to_external_callback(Object *obj, const char *what, Error *err)
 {
-  // switch 
-  // return
-  // {
-  //   .
-  // }
+  ExternalCallback callback = EXTERNAL_CALLBACK_NONE;
+  switch (obj->type) {
+  case kObjectTypeLuaRef:
+    callback.type = kExternalCallbackTypeLua;
+    callback.data.luaref = obj->data.luaref;
+    obj->data.luaref = LUA_NOREF;
+    break;
+  case kObjectTypeWasmRef:
+    callback.type = kExternalCallbackTypeWasm;
+    callback.data.wasmref = obj->data.wasmref;
+    break;
+  default:
+    VALIDATE_EXP(false, what, "LuaRef or WasmRef", NULL, ;);
+  }
+  return callback;
 }
+
+void api_free_external_callback(ExternalCallback cb)
+{
+  switch (cb.type) {
+  case kExternalCallbackTypeNone:
+    return;
+  case kExternalCallbackTypeLua:
+    api_free_luaref(cb.data.luaref);
+    return;
+  case kExternalCallbackTypeWasm:
+    api_free_wasmref(cb.data.wasmref);
+    return;
+  }
+}
+
+void external_callback_call(ExternalCallback cb, const char *name, Array args)
+{
+  switch (cb.type) {
+  case kExternalCallbackTypeNone:
+    return;
+  case kExternalCallbackTypeLua:
+    nlua_call_ref(cb.data.luaref, name, args, false, NULL);
+    return;
+  case kExternalCallbackTypeWasm:
+    wasm_call_wasmref(cb.data.wasmref, name, args);
+    return;
+  }
+}
+// Object nlua_call_ref(LuaRef ref, const char *name, Array args, bool retval, Error *err)

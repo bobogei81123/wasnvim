@@ -10,6 +10,8 @@ use super::{
 /// Wraps an owned Neovim `Object` (see nvim/api/private/defs.h).
 pub type NvimObject = NvimFfiWrapper<nvim_sys::Object>;
 
+type NvimWasmRef = nvim_sys::WasmRef;
+
 /// Wraps a Neovim's Object. (see nvim/api/private/defs.h).
 #[non_exhaustive]
 // #[derive(derive_more::TryInto)]
@@ -25,12 +27,11 @@ pub enum NvimObjectEnum {
     Buffer(NvimBuffer),
     Window(NvimWindow),
     Tabpage(NvimTabpage),
+    WasmRef(NvimWasmRef),
 }
 
 /// Wraps a Neovim's Object. (see nvim/api/private/defs.h).
 #[non_exhaustive]
-// #[derive(derive_more::TryInto)]
-// #[try_into(owned, ref, ref_mut)]
 pub enum NvimObjectEnumRef<'a> {
     Nil,
     Boolean(&'a bool),
@@ -42,6 +43,7 @@ pub enum NvimObjectEnumRef<'a> {
     Buffer(&'a NvimBuffer),
     Window(&'a NvimWindow),
     Tabpage(&'a NvimTabpage),
+    WasmRef(&'a NvimWasmRef),
 }
 
 /// Represents the type of a Neovim object.
@@ -58,6 +60,7 @@ pub enum NvimApiType {
     Buffer,
     Window,
     Tabpage,
+    WasmRef,
 }
 
 /// Rust types that can be convert to an [`NvimObject`].
@@ -166,6 +169,12 @@ impl NvimObject {
                     *result.data.integer.as_mut() = tabpage.handle();
                 }
             }
+            NvimObjectEnum::WasmRef(wasmref) => {
+                result.type_ = nvim_sys::ObjectType_kObjectTypeWasmRef;
+                unsafe {
+                    *result.data.wasmref.as_mut() = wasmref;
+                }
+            }
         }
 
         unsafe { Self::from_ffi(result) }
@@ -204,6 +213,9 @@ impl NvimObject {
                 NvimApiType::Tabpage => NvimObjectEnum::Tabpage(NvimTabpage::from_handle(
                     *me.as_ffi_ref().data.integer.as_ref(),
                 )),
+                NvimApiType::WasmRef => {
+                    NvimObjectEnum::WasmRef(*me.as_ffi_ref().data.wasmref.as_ref())
+                }
             }
         }
     }
@@ -241,6 +253,9 @@ impl NvimObject {
                 NvimApiType::Tabpage => NvimObjectEnumRef::Tabpage(NvimTabpage::from_handle_ref(
                     me.as_ffi_ref().data.integer.as_ref(),
                 )),
+                NvimApiType::WasmRef => {
+                    NvimObjectEnumRef::WasmRef(me.as_ffi_ref().data.wasmref.as_ref())
+                }
             }
         }
     }
@@ -373,6 +388,7 @@ impl NvimObjectEnum {
             Buffer(_) => NvimApiType::Buffer,
             Window(_) => NvimApiType::Window,
             Tabpage(_) => NvimApiType::Tabpage,
+            WasmRef(_) => NvimApiType::WasmRef,
         }
     }
 }
@@ -393,6 +409,7 @@ impl<'a> NvimObjectEnumRef<'a> {
             Buffer(_) => NvimApiType::Buffer,
             Window(_) => NvimApiType::Window,
             Tabpage(_) => NvimApiType::Tabpage,
+            WasmRef(_) => NvimApiType::WasmRef,
         }
     }
 }
@@ -424,6 +441,7 @@ impl NvimApiType {
             NvimApiType::Buffer => "Buffer",
             NvimApiType::Window => "Window",
             NvimApiType::Tabpage => "Tabpage",
+            NvimApiType::WasmRef => "WasmRef",
         }
     }
 }

@@ -1,11 +1,12 @@
 use std::{
+    borrow::Borrow,
     ffi::{c_char, CStr, CString},
     sync::{Mutex, OnceLock},
 };
 
 use anyhow::{bail, Context, Result};
 use nvim::api::{nvim_api, nvim_keysets, nvim_types};
-use nvim_rs::{slice_from_ffi_ref, types::NvimObject};
+use nvim_rs::{slice_from_ffi_ref, types::NvimObject, IntoObject, NvimArray, NvimString};
 use slab::Slab;
 use types::{FromWasmType, TryIntoWasmType};
 use wasmtime::{
@@ -76,16 +77,40 @@ pub unsafe extern "C" fn wasm_call_func(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wasm_call_wasmref(wasmref: nvim_sys::WasmRef, args: nvim_sys::Array) {
+pub unsafe extern "C" fn wasm_call_wasmref(
+    wasmref: nvim_sys::WasmRef,
+    name: *const c_char,
+    args: nvim_sys::Array,
+) {
     const COMPONENT_CALL_CALLBACK_FUNCNAME: &str = "component-call-callback";
+    let mut name_appended_args = vec![];
+    let callback_name_obj = name.as_ref().map(|s| {
+        NvimString::new(
+            CStr::from_ptr(s)
+                .to_str()
+                .expect("Callback name is not a valid utf-8 string")
+                .to_owned(),
+        )
+        .into_object()
+    });
+    if let Some(ref callback_name) = callback_name_obj {
+        name_appended_args.push(callback_name);
+    }
     let args = slice_from_ffi_ref(&args);
+    for arg in args {
+        name_appended_args.push(arg);
+    }
     let _ = wasm_call_func_impl(wasmref.instance_id, COMPONENT_CALL_CALLBACK_FUNCNAME, args);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn api_free_wasmref(wasmref: nvim_sys::WasmRef) {
     const COMPONENT_FREE_CALLBACK_FUNCNAME: &str = "component-free-callback";
-    let _ = wasm_call_func_impl(wasmref.instance_id, COMPONENT_FREE_CALLBACK_FUNCNAME, &[]);
+    let _ = wasm_call_func_impl::<NvimObject>(
+        wasmref.instance_id,
+        COMPONENT_FREE_CALLBACK_FUNCNAME,
+        &[],
+    );
 }
 
 unsafe fn unwrap_or_set_error_and_return<T>(
@@ -138,7 +163,12 @@ fn wasm_config() -> wasmtime::Config {
 
 fn init_wasm_state(config: &wasmtime::Config) {
     let engine = Engine::new(config).expect("Failed to create wasm engine");
-    let store = Store::new(&engine, NvimHost);
+    let store = Store::new(
+        &engine,
+        NvimHost {
+            current_instance_id: 0,
+        },
+    );
     let mut linker = Linker::new(&engine);
     Plugin::add_to_linker(&mut linker, |state| state)
         .expect("Failed to add the host bindings to WASM linker");
@@ -175,11 +205,10 @@ fn wasm_load_file_impl(file_path: &str) -> Result<i32> {
     Ok(mutate_state.instances.insert(instance) as i32)
 }
 
-fn wasm_call_func_impl(
-    instance_id: i32,
-    func_name: &str,
-    args: &[NvimObject],
-) -> Result<NvimObject> {
+fn wasm_call_func_impl<NO>(instance_id: i32, func_name: &str, args: &[NO]) -> Result<NvimObject>
+where
+    NO: Borrow<NvimObject>,
+{
     if instance_id < 0 {
         bail!("Instance ID should be non-negative, got {instance_id}")
     }
@@ -188,23 +217,28 @@ fn wasm_call_func_impl(
         .instances
         .get(instance_id as usize)
         .with_context(|| format!("Cannot find instance with ID = {instance_id}"))?;
+    mutate_state
+        .store
+        .data_mut()
+        .set_current_instance_id(instance_id);
 
     let func: TypedFunc<(Vec<nvim_api::Object>,), (nvim_api::Object,)> = instance
         .get_func(&mut mutate_state.store, func_name)
         .with_context(|| format!("Cannot find function {func_name} in instance {instance_id}"))?
         .typed(&mut mutate_state.store)
         .with_context(|| {
-            format!("The function {func_name} is not a function of type list<Object> -> Object")
+            format!("The function {func_name} is not a function of type list<object> -> object")
         })?;
+    let context = mutate_state.store.data().conversion_context();
     let args = args
         .iter()
-        .map(|obj| Ok(obj.clone().try_into_wasm_type()?))
+        .map(|obj| Ok(obj.borrow().clone().try_into_wasm_type(&context)?))
         .collect::<Result<Vec<_>>>()?;
 
     let (result,) = func.call(&mut mutate_state.store, (args,)).with_context(|| {
       format!("The function call to {func_name} trapped (an runtime exception is raised) or failed")
     })?;
-    Ok(NvimObject::from_wasm_type(result))
+    Ok(NvimObject::from_wasm_type(result, &context))
 }
 
 // This generates all the types and interface defined in the wit file.
@@ -213,7 +247,21 @@ wasmtime::component::bindgen!("plugin");
 /// Implements the host bindings.
 ///
 /// See `wit/nvim.wit` for the definition of the host bindings.
-struct NvimHost;
+struct NvimHost {
+    current_instance_id: i32,
+}
+
+impl NvimHost {
+    fn set_current_instance_id(&mut self, instance_id: i32) {
+        self.current_instance_id = instance_id;
+    }
+
+    fn conversion_context(&self) -> types::Context {
+        types::Context {
+            current_instance_id: self.current_instance_id,
+        }
+    }
+}
 
 include!(concat!(env!("OUT_DIR"), "/api_impl.rs"));
 

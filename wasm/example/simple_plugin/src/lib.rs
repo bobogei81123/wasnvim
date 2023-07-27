@@ -4,11 +4,17 @@ wit_bindgen::generate!("plugin");
 
 struct MyPlugin;
 
+
+
 impl Plugin for MyPlugin {
     fn run(_args: Vec<Object>) -> Object {
         std::panic::set_hook(Box::new(|panic_info| {
             nvim_api::nvim_err_write(&format!("{panic_info}\n"));
         }));
+
+        let _ = nvim_api::nvim_open_term(0, &[("on_input".to_owned(), Object::Wasmref(0))]);
+        return Object::Nil;
+
 
         let buf = nvim_api::nvim_create_buf(false, false).unwrap();
         let _win = nvim_api::nvim_open_win(

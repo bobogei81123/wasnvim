@@ -49,6 +49,11 @@ use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-
   /// See `:help nvim_buf_line_count`.
   %nvim-buf-line-count: func(%buffer: buffer) -> result<s64, string>
 
+  /// Corresponds to `nvim_buf_attach`.
+  ///
+  /// See `:help nvim_buf_attach`.
+  %nvim-buf-attach: func(%buffer: buffer, %send-buffer: bool, %opts: list<tuple<string, object>>) -> result<bool, string>
+
   /// Corresponds to `nvim_buf_detach`.
   ///
   /// See `:help nvim_buf_detach`.
@@ -558,6 +563,11 @@ use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-
   ///
   /// See `:help nvim_create_buf`.
   %nvim-create-buf: func(%listed: bool, %scratch: bool) -> result<buffer, string>
+
+  /// Corresponds to `nvim_open_term`.
+  ///
+  /// See `:help nvim_open_term`.
+  %nvim-open-term: func(%buffer: buffer, %opts: list<tuple<string, object>>) -> result<s64, string>
 
   /// Corresponds to `nvim_list_tabpages`.
   ///

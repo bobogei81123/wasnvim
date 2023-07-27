@@ -570,7 +570,14 @@ type KeysetFieldMap = HashMap<String, ApiKeyset>;
 fn parse_funcs(header: &str, keyset_field_map: &KeysetFieldMap) -> Vec<ApiFunc> {
     header
         .lines()
-        .filter_map(|line| parse_line(line, keyset_field_map).ok())
+        .filter_map(|line| {
+            // let res = parse_line(line, keyset_field_map);
+            // if let Err(err) = res {
+            //     println!("Line = {}", line);
+            //     println!("Err = {}", err);
+            // }
+            parse_line(line, keyset_field_map).ok()
+        })
         .collect()
 }
 
@@ -593,7 +600,7 @@ impl ApiType {
     }
 
     fn str_is_nested_type(name: &str) -> bool {
-        const NESTED_TYPES: [&str; 2] = ["ArrayOf", "Dict"];
+        const NESTED_TYPES: [&str; 2] = ["ArrayOf", "DictionaryOf"];
         NESTED_TYPES.contains(&name)
     }
 

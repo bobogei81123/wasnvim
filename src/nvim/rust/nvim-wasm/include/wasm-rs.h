@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
 #include "nvim/api/private/defs.h"
 #include "nvim/types.h"
 
@@ -31,6 +32,6 @@ int32_t wasm_load_file(const char *file_path, const char **errmsg);
  */
 Object wasm_call_func(int32_t instance_id, const char *func_name, Array args, const char **errmsg);
 
-void wasm_call_wasmref(WasmRef wasmref);
+void wasm_call_wasmref(WasmRef wasmref, const char *func_name, Array args);
 
 void api_free_wasmref(WasmRef wasmref);

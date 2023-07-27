@@ -13,6 +13,7 @@ mod ffi_wrapper;
 mod object;
 mod result;
 mod string;
+mod wasm_ref;
 
 /// Represents a handle to an Neovim buffer.
 #[repr(transparent)]

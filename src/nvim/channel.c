@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "lauxlib.h"
 #include "nvim/api/private/converter.h"
 #include "nvim/api/private/defs.h"
 #include "nvim/api/private/helpers.h"
@@ -35,6 +34,8 @@
 #include "nvim/path.h"
 #include "nvim/rbuffer.h"
 
+#include "lauxlib.h"
+
 #ifdef MSWIN
 # include "nvim/os/fs.h"
 # include "nvim/os/os_win_console.h"
@@ -57,9 +58,7 @@ void channel_teardown(void)
 {
   Channel *channel;
 
-  pmap_foreach_value(&channels, channel, {
-    channel_close(channel->id, kChannelPartAll, NULL);
-  });
+  pmap_foreach_value(&channels, channel, { channel_close(channel->id, kChannelPartAll, NULL); });
 }
 
 /// Closes a channel
@@ -94,8 +93,7 @@ bool channel_close(uint64_t id, ChannelPart part, const char **error)
       *error = e_invstream;
       return false;
     }
-  } else if ((part == kChannelPartStdin || part == kChannelPartStdout)
-             && chan->is_rpc) {
+  } else if ((part == kChannelPartStdin || part == kChannelPartStdout) && chan->is_rpc) {
     *error = e_invstreamrpc;
     return false;
   }
@@ -160,8 +158,8 @@ bool channel_close(uint64_t id, ChannelPart part, const char **error)
       return false;
     }
     if (chan->term) {
-      api_free_luaref(chan->stream.internal.cb);
-      chan->stream.internal.cb = LUA_NOREF;
+      api_free_external_callback(chan->stream.internal.cb);
+      chan->stream.internal.cb = (ExternalCallback)EXTERNAL_CALLBACK_NONE;
       chan->stream.internal.closed = true;
       terminal_close(&chan->term, 0);
     } else {
@@ -187,8 +185,7 @@ void channel_init(void)
 ///
 /// Channel is allocated with refcount 1, which should be decreased
 /// when the underlying stream closes.
-Channel *channel_alloc(ChannelStreamType type)
-  FUNC_ATTR_NONNULL_RET
+Channel *channel_alloc(ChannelStreamType type) FUNC_ATTR_NONNULL_RET
 {
   Channel *chan = xcalloc(1, sizeof(*chan));
   if (type == kChannelStreamStdio) {
@@ -443,15 +440,14 @@ uint64_t channel_connect(bool tcp, const char *address, bool rpc, CallbackReader
       // Create a loopback channel. This avoids deadlock if nvim connects to
       // its own named pipe.
       channel = channel_alloc(kChannelStreamInternal);
-      channel->stream.internal.cb = LUA_NOREF;
+      channel->stream.internal.cb = (ExternalCallback)EXTERNAL_CALLBACK_NONE;
       rpc_start(channel);
       goto end;
     }
   }
 
   channel = channel_alloc(kChannelStreamSocket);
-  if (!socket_connect(&main_loop, &channel->stream.socket,
-                      tcp, address, timeout, error)) {
+  if (!socket_connect(&main_loop, &channel->stream.socket, tcp, address, timeout, error)) {
     channel_destroy_early(channel);
     return 0;
   }
@@ -491,8 +487,8 @@ void channel_from_connection(SocketWatcher *watcher)
 
 /// Creates an API channel from stdin/stdout. This is used when embedding
 /// Neovim
-uint64_t channel_from_stdio(bool rpc, CallbackReader on_output, const char **error)
-  FUNC_ATTR_NONNULL_ALL
+uint64_t channel_from_stdio(bool rpc, CallbackReader on_output,
+                            const char **error) FUNC_ATTR_NONNULL_ALL
 {
   if (!headless_mode && !embedded_mode) {
     *error = _("can only be opened in headless mode");
@@ -541,8 +537,8 @@ uint64_t channel_from_stdio(bool rpc, CallbackReader on_output, const char **err
 }
 
 /// @param data will be consumed
-size_t channel_send(uint64_t id, char *data, size_t len, bool data_owned, const char **error)
-  FUNC_ATTR_NONNULL_ALL
+size_t channel_send(uint64_t id, char *data, size_t len, bool data_owned,
+                    const char **error) FUNC_ATTR_NONNULL_ALL
 {
   Channel *chan = find_channel(id);
   size_t written = 0;
@@ -587,8 +583,7 @@ size_t channel_send(uint64_t id, char *data, size_t len, bool data_owned, const 
   }
 
   // write can be delayed indefinitely, so always use an allocated buffer
-  WBuffer *buf = wstream_new_buffer(data_owned ? data : xmemdup(data, len),
-                                    len, 1, xfree);
+  WBuffer *buf = wstream_new_buffer(data_owned ? data : xmemdup(data, len), len, 1, xfree);
   return wstream_write(in, buf) ? len : 0;
 
 retfree:
@@ -699,10 +694,8 @@ void channel_reader_callbacks(Channel *chan, CallbackReader *reader)
     if (reader->eof) {
       if (reader->self) {
         if (tv_dict_find(reader->self, reader->type, -1) == NULL) {
-          list_T *data = buffer_to_tv_list(reader->buffer.ga_data,
-                                           (size_t)reader->buffer.ga_len);
-          tv_dict_add_list(reader->self, reader->type, strlen(reader->type),
-                           data);
+          list_T *data = buffer_to_tv_list(reader->buffer.ga_data, (size_t)reader->buffer.ga_len);
+          tv_dict_add_list(reader->self, reader->type, strlen(reader->type), data);
         } else {
           semsg(_(e_streamkey), reader->type, chan->id);
         }
@@ -753,8 +746,7 @@ static void channel_callback_call(Channel *chan, CallbackReader *reader)
   if (reader) {
     argv[1].v_type = VAR_LIST;
     argv[1].v_lock = VAR_UNLOCKED;
-    argv[1].vval.v_list = buffer_to_tv_list(reader->buffer.ga_data,
-                                            (size_t)reader->buffer.ga_len);
+    argv[1].vval.v_list = buffer_to_tv_list(reader->buffer.ga_data, (size_t)reader->buffer.ga_len);
     tv_list_ref(argv[1].vval.v_list);
     ga_clear(&reader->buffer);
     cb = &reader->cb;
@@ -866,8 +858,7 @@ static void set_info_event(void **argv)
 bool channel_job_running(uint64_t id)
 {
   Channel *chan = find_channel(id);
-  return (chan
-          && chan->streamtype == kChannelStreamProc
+  return (chan && chan->streamtype == kChannelStreamProc
           && !process_is_stopped(&chan->stream.proc));
 }
 
@@ -941,8 +932,6 @@ Array channel_all_info(void)
 {
   Channel *channel;
   Array ret = ARRAY_DICT_INIT;
-  pmap_foreach_value(&channels, channel, {
-    ADD(ret, DICTIONARY_OBJ(channel_info(channel->id)));
-  });
+  pmap_foreach_value(&channels, channel, { ADD(ret, DICTIONARY_OBJ(channel_info(channel->id))); });
   return ret;
 }

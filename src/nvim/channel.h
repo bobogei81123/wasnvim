@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "nvim/api/private/defs.h"
 #include "nvim/eval/typval_defs.h"
 #include "nvim/event/libuv_process.h"
 #include "nvim/event/multiqueue.h"
@@ -54,7 +55,7 @@ typedef struct {
 } StderrState;
 
 typedef struct {
-  LuaRef cb;
+  ExternalCallback cb;
   bool closed;
 } InternalState;
 

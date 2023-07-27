@@ -18,7 +18,7 @@ fn main() {
         // The channel IDjused by all WASM calls.
         const WASM_INTERNAL_CALL: u64 = (1u64 << 63) + 2;
 
-        #[allow(non_snake_case, clippy::let_unit_value)]
+        #[allow(non_snake_case, unused_variables, clippy::let_unit_value)]
         impl nvim_api::Host for NvimHost {
             #(#funcs_impls)*
         }
@@ -107,6 +107,7 @@ fn gen_fn_body(func: &ApiFunc) -> TokenStream {
     let extra_vars_definition = gen_extra_vars_definition(func);
     let call_api_function = gen_call_api_function(func);
     let mut ts = quote! {
+        let context = self.conversion_context();
         #args_conversion
         #extra_vars_definition
         #call_api_function
@@ -144,7 +145,7 @@ fn gen_arg_conversion(arg: &ApiArg) -> TokenStream {
         }
         _ => {
             quote! {
-                let #arg_name = <#arg_host_type>::from_wasm_type(#arg_name);
+                let #arg_name = <#arg_host_type>::from_wasm_type(#arg_name, &context);
             }
         }
     }
@@ -158,7 +159,7 @@ fn gen_keyset_fields_conversion(arg_name: &str, keyset: &ApiKeyset) -> TokenStre
         let field_var_name = keyset_field_var_name(arg_name, field);
 
         quote! {
-            let mut #field_var_name = <#field_type>::from_wasm_type(#arg_var_name.#field_name);
+            let mut #field_var_name = <#field_type>::from_wasm_type(#arg_var_name.#field_name, &context);
         }
     });
     quote! {
@@ -307,7 +308,7 @@ fn gen_return_val_conversion(return_: &ApiFuncReturn, has_arena: bool) -> TokenS
         }
     };
 
-    let mut final_expr = quote! { Ok((#expr).try_into_wasm_type()?) };
+    let mut final_expr = quote! { Ok((#expr).try_into_wasm_type(&context)?) };
     if return_.has_error {
         final_expr = quote! { Ok(#final_expr) };
     }
@@ -356,7 +357,7 @@ fn wasm_type(arg: &ApiType) -> TokenStream {
             let keyset_name = format_ident!("r#{}", wit_name_to_camel(&keyset.wit_name()));
             quote!(nvim_keysets::#keyset_name)
         }
-        LuaRef => quote!(nvim_types::LuaRef),
+        LuaRef => quote!(nvim_types::Object),
         Buffer => quote!(nvim_types::Buffer),
         Window => quote!(nvim_types::Window),
         Tabpage => quote!(nvim_types::Tabpage),
@@ -377,7 +378,7 @@ fn host_type(arg: &ApiType) -> TokenStream {
             let keyset_name = format_ident!("KeyDict_{}", keyset.name);
             quote!(nvim_sys::#keyset_name)
         }
-        LuaRef => quote!(nvim_types::LuaRef),
+        LuaRef => quote!(nvim_rs::NvimObject),
         Buffer => quote!(nvim_rs::NvimBuffer),
         Window => quote!(nvim_rs::NvimWindow),
         Tabpage => quote!(nvim_rs::NvimTabpage),
