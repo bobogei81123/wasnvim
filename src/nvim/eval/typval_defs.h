@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <limits.h>
 
+#include "nvim/api/private/defs.h"
 #include "nvim/garray.h"
 #include "nvim/hashtab.h"
 #include "nvim/lib/queue.h"
@@ -57,14 +58,14 @@ typedef enum {
   kCallbackNone = 0,
   kCallbackFuncref,
   kCallbackPartial,
-  kCallbackLua,
+  kCallbackExternal,
 } CallbackType;
 
 typedef struct {
   union {
     char *funcref;
     partial_T *partial;
-    LuaRef luaref;
+    ExternalCallback external;
   } data;
   CallbackType type;
 } Callback;

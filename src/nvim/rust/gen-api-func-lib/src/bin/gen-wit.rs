@@ -89,7 +89,7 @@ fn write_funcs<W: Write>(w: &mut W, functions: &[ApiFunc], keysets: &[ApiKeyset]
         .join(", ");
     writeln!(
         w,
-        "use nvim-keysets.{{{keysets_concat}}}",
+        "  use nvim-keysets.{{{keysets_concat}}}",
         keysets_concat = keysets_concat,
     )
     .unwrap();

@@ -19,7 +19,7 @@ fn main() {
         const WASM_INTERNAL_CALL: u64 = (1u64 << 63) + 2;
 
         #[allow(non_snake_case, unused_variables, clippy::let_unit_value)]
-        impl nvim_api::Host for NvimHost {
+        impl nvim_api::Host for NvimHostStore {
             #(#funcs_impls)*
         }
     };
@@ -276,7 +276,11 @@ fn gen_error_return() -> TokenStream {
 
 fn gen_return_val_conversion(return_: &ApiFuncReturn, has_arena: bool) -> TokenStream {
     let Some(rtype) = &return_.type_ else {
-        return if return_.has_error { quote!{ Ok(Ok(())) } } else { quote!{ Ok(()) } }
+        return if return_.has_error {
+            quote! { Ok(Ok(())) }
+        } else {
+            quote! { Ok(()) }
+        };
     };
 
     let return_var = result_var_name();

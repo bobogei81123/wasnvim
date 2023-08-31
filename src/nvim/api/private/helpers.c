@@ -32,6 +32,7 @@
 #include "nvim/msgpack_rpc/helpers.h"
 #include "nvim/pos.h"
 #include "nvim/rust/nvim-wasm/include/wasm-rs.h"
+#include "nvim/types.h"
 #include "nvim/ui.h"
 #include "nvim/version.h"
 
@@ -1010,20 +1011,84 @@ sctx_T api_set_sctx(uint64_t channel_id)
 ExternalCallback object_to_external_callback(Object *obj, const char *what, Error *err)
 {
   ExternalCallback callback = EXTERNAL_CALLBACK_NONE;
-  switch (obj->type) {
-  case kObjectTypeLuaRef:
+  if (obj->type == kObjectTypeLuaRef) {
+    VALIDATE_S(obj->data.luaref != LUA_NOREF, what, "<no value>", return callback);
+    VALIDATE_S(nlua_ref_is_function(obj->data.luaref), what, "<not a function>", return callback);
     callback.type = kExternalCallbackTypeLua;
     callback.data.luaref = obj->data.luaref;
     obj->data.luaref = LUA_NOREF;
-    break;
-  case kObjectTypeWasmRef:
+  } else if (obj->type == kObjectTypeWasmRef) {
+    VALIDATE_S(obj->data.wasmref.instance_id >= 0, what, "<no value>", return callback);
     callback.type = kExternalCallbackTypeWasm;
     callback.data.wasmref = obj->data.wasmref;
-    break;
-  default:
+    obj->data.wasmref = WASM_NOREF;
+  } else {
     VALIDATE_EXP(false, what, "LuaRef or WasmRef", NULL, ;);
   }
   return callback;
+}
+
+Object external_callback_to_object(ExternalCallback cb)
+{
+  switch (cb.type) {
+  case kExternalCallbackTypeNone:
+    return NIL;
+  case kExternalCallbackTypeLua:
+    if (nlua_ref_is_function(cb.data.luaref)) {
+      return LUAREF_OBJ(api_new_luaref(cb.data.luaref));
+    } else {
+      return NIL;
+    }
+  case kExternalCallbackTypeWasm:
+    return NIL;
+  }
+}
+
+bool external_callback_is_none(ExternalCallback cb)
+{
+  switch (cb.type) {
+  case kExternalCallbackTypeNone:
+    return true;
+  case kExternalCallbackTypeLua:
+    return cb.data.luaref == LUA_NOREF;
+  case kExternalCallbackTypeWasm:
+    return cb.data.wasmref.instance_id < 0;
+  }
+}
+
+bool external_callback_is_valid(ExternalCallback cb)
+{
+  if (external_callback_is_none(cb)) {
+    return false;
+  }
+  switch (cb.type) {
+  case kExternalCallbackTypeNone:
+    // Unreachable
+    return false;
+  case kExternalCallbackTypeLua:
+    return nlua_ref_is_function(cb.data.luaref);
+  case kExternalCallbackTypeWasm:
+    return true;
+  }
+}
+
+bool external_callback_eq(ExternalCallback cb1, ExternalCallback cb2)
+{
+  if (cb1.type != cb2.type) {
+    return false;
+  }
+  switch (cb1.type) {
+  case kExternalCallbackTypeNone:
+    return true;
+  case kExternalCallbackTypeLua:
+    return cb1.data.luaref == cb2.data.luaref;
+  case kExternalCallbackTypeWasm:
+    if (cb1.data.wasmref.instance_id < 0 || cb2.data.wasmref.instance_id < 0) {
+      return cb1.data.wasmref.instance_id < 0 && cb2.data.wasmref.instance_id < 0;
+    }
+    return cb1.data.wasmref.instance_id == cb2.data.wasmref.instance_id
+           && cb1.data.wasmref.ref == cb2.data.wasmref.ref;
+  }
 }
 
 void api_free_external_callback(ExternalCallback cb)
@@ -1040,17 +1105,24 @@ void api_free_external_callback(ExternalCallback cb)
   }
 }
 
-void external_callback_call(ExternalCallback cb, const char *name, Array args)
+ExternalCallback external_callback_copy(ExternalCallback *cb)
+{
+
+}
+
+ExternalCallback external_callback_to_string(ExternalCallback *cb)
+{
+
+}
+
+Object external_callback_call(ExternalCallback cb, const char *name, Array args, bool retval)
 {
   switch (cb.type) {
   case kExternalCallbackTypeNone:
     return;
   case kExternalCallbackTypeLua:
-    nlua_call_ref(cb.data.luaref, name, args, false, NULL);
-    return;
+    return nlua_call_ref(cb.data.luaref, name, args, retval, NULL);
   case kExternalCallbackTypeWasm:
-    wasm_call_wasmref(cb.data.wasmref, name, args);
-    return;
+    return wasm_call_wasmref(cb.data.wasmref, name, args);
   }
 }
-// Object nlua_call_ref(LuaRef ref, const char *name, Array args, bool retval, Error *err)

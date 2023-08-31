@@ -7,14 +7,17 @@ use std::{
 use anyhow::{bail, Context, Result};
 use nvim::api::{nvim_api, nvim_keysets, nvim_types};
 use nvim_rs::{slice_from_ffi_ref, types::NvimObject, IntoObject, NvimArray, NvimString};
+use runtime::{init_wasm_state, InstanceId};
 use slab::Slab;
 use types::{FromWasmType, TryIntoWasmType};
 use wasmtime::{
-    component::{Component, Instance, Linker, TypedFunc},
+    component::{Component, Instance, Linker, ResourceAny, TypedFunc},
     Engine, Store,
 };
 
+mod runtime;
 mod types;
+pub mod wasmref;
 
 /// Initializes the Nvim WASM module.
 ///
@@ -24,15 +27,14 @@ mod types;
 ///
 /// Panics when failing to create the wasm engine.
 #[no_mangle]
-pub extern "C" fn wasm_rs_init() {
-    let config = wasm_config();
-    init_wasm_state(&config);
+pub extern "C" fn wasm_init() {
+    init_wasm_state();
 }
 
 /// Loads the WASM binary to the global store and returns the instance ID.
 ///
 /// # Safety
-/// The `file_path` pointer must be a valid UTF-8 CString.
+/// The `file_path` pointer must be a valid C-string.
 //
 // TODO: The requirement of `file_path` being a valid unicode string is probably over-restricted.
 // See what the convention of file path is for Neovim.
@@ -41,15 +43,19 @@ pub unsafe extern "C" fn wasm_load_file(
     file_path: *const c_char,
     errmsg: *mut *const c_char,
 ) -> i32 {
+    assert!(!file_path.is_null());
+    let errmsg = errmsg.as_mut().expect("expect errmsg to be non-null");
     let file_path = unsafe { CStr::from_ptr(file_path) }
         .to_str()
         .expect("File path is not a valid utf-8 string");
-    let result = wasm_load_file_impl(file_path);
+    let result = runtime::state().load_wasm_file(file_path);
 
     unwrap_or_set_error_and_return(result, errmsg, -1)
 }
 
 /// Calls a function exported by a WASM instance.
+///
+/// The function should be in the "root" of the WASM component (i.e., in the outer "world").
 ///
 /// # Arguments
 /// * `instance_id` - The instance ID returned by `wasm_load_file`.
@@ -58,32 +64,44 @@ pub unsafe extern "C" fn wasm_load_file(
 /// * `errmsg` - If errored, a string describing the error will be stored.
 ///
 /// # Safety
-/// All the pointers argument should be non-null and `errmsg` should point to a valid `Error`
-/// struct.
+/// * `func_name` should point to a valid C-string.
+/// * `errmsg` should point to a valid `Error` struct.
 #[no_mangle]
 pub unsafe extern "C" fn wasm_call_func(
-    instance_id: i32,
+    instance_id: InstanceId,
     func_name: *const c_char,
     args: nvim_sys::Array,
     errmsg: *mut *const c_char,
 ) -> nvim_sys::Object {
+    assert!(!func_name.is_null());
+    let errmsg = errmsg.as_mut().expect("expect errmsg to be non-null");
     let func_name = CStr::from_ptr(func_name)
         .to_str()
         .expect("Function name is not a valid utf-8 string");
     let args = slice_from_ffi_ref(&args);
-    let result = wasm_call_func_impl(instance_id, func_name, args);
+    let result = runtime::state().call_instance_func(instance_id, func_name, args);
 
     unwrap_or_set_error_and_return(result, errmsg, NvimObject::nil()).into_ffi()
 }
 
+/// Calls a WASM callback given the ref.
+///
+/// # Arguments
+/// * `wasmref` - The WASM ref pointing to the callback. It contains the instance ID and the
+///   callback reference.
+/// * `name` - The name of the function or the event triggering the callback. If not null, then an
+///   extra string of this name will be passed as the first argument to the callback.
+/// * `args` - The arguments passed as a Neovim API array.
+///
+/// # Safety
+/// * If `name` is not null, it should point to a valid C-string.
 #[no_mangle]
 pub unsafe extern "C" fn wasm_call_wasmref(
     wasmref: nvim_sys::WasmRef,
     name: *const c_char,
     args: nvim_sys::Array,
-) {
-    const COMPONENT_CALL_CALLBACK_FUNCNAME: &str = "component-call-callback";
-    let mut name_appended_args = vec![];
+) -> nvim_sys::Object {
+    let mut name_appended_args = Vec::<&NvimObject>::new();
     let callback_name_obj = name.as_ref().map(|s| {
         NvimString::new(
             CStr::from_ptr(s)
@@ -100,22 +118,20 @@ pub unsafe extern "C" fn wasm_call_wasmref(
     for arg in args {
         name_appended_args.push(arg);
     }
-    let _ = wasm_call_func_impl(wasmref.instance_id, COMPONENT_CALL_CALLBACK_FUNCNAME, args);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn api_free_wasmref(wasmref: nvim_sys::WasmRef) {
-    const COMPONENT_FREE_CALLBACK_FUNCNAME: &str = "component-free-callback";
-    let _ = wasm_call_func_impl::<NvimObject>(
-        wasmref.instance_id,
-        COMPONENT_FREE_CALLBACK_FUNCNAME,
-        &[],
-    );
+    match runtime::state().call_instance_callback(wasmref.instance_id, wasmref.ref_, args) {
+        Ok(result) => result.into_ffi(),
+        Err(err) => {
+            nvim_rs::emsg(&format!(
+                "Failed during the execution of the callback: {err:#}"
+            ));
+            NvimObject::nil().into_ffi()
+        }
+    }
 }
 
 unsafe fn unwrap_or_set_error_and_return<T>(
     result: Result<T>,
-    errmsg: *mut *const c_char,
+    errmsg: &mut *const c_char,
     err_val: T,
 ) -> T {
     match result {
@@ -134,136 +150,7 @@ unsafe fn unwrap_or_set_error_and_return<T>(
     }
 }
 
-/// The global state of the Nvim WASM module.
-struct WasmState {
-    engine: Engine,
-    mutate_state: Mutex<WasmMutateState>,
-}
-
-struct WasmMutateState {
-    store: Store<NvimHost>,
-    linker: Linker<NvimHost>,
-    instances: Slab<Instance>,
-}
-
-/// The global instance of the Nvim WASM module state.
-static WASM_STATE: OnceLock<WasmState> = OnceLock::new();
-
-/// Returns the global WASM state.
-fn state() -> &'static WasmState {
-    WASM_STATE.get().expect("Wasm state is not initialized")
-}
-
-/// Returns the config for creating the WASM engine.
-fn wasm_config() -> wasmtime::Config {
-    let mut config = wasmtime::Config::new();
-    config.wasm_component_model(true);
-    config
-}
-
-fn init_wasm_state(config: &wasmtime::Config) {
-    let engine = Engine::new(config).expect("Failed to create wasm engine");
-    let store = Store::new(
-        &engine,
-        NvimHost {
-            current_instance_id: 0,
-        },
-    );
-    let mut linker = Linker::new(&engine);
-    Plugin::add_to_linker(&mut linker, |state| state)
-        .expect("Failed to add the host bindings to WASM linker");
-    WASM_STATE
-        .set(WasmState {
-            engine,
-            mutate_state: Mutex::new(WasmMutateState {
-                store,
-                linker,
-                instances: Slab::new(),
-            }),
-        })
-        .map_err(|_| ())
-        .expect("Failed to initialize wasm state");
-}
-
-const MUTEX_POISONED_ERR: &str = "Mutex is poisoned";
-
-fn wasm_load_file_impl(file_path: &str) -> Result<i32> {
-    // TODO: It will be helpful to cache the compiled component here.
-    let component = Component::from_file(&state().engine, file_path)
-        .with_context(|| format!("Failed to load the WASM file {}", file_path))?;
-
-    let mut mutate_state = state().mutate_state.lock().expect(MUTEX_POISONED_ERR);
-    let mutate_state = &mut *mutate_state;
-    // This should rarely happen. No one loads 2^31 WASM files...
-    if mutate_state.instances.len() >= i32::MAX as usize {
-        bail!("Cannot load new WASM file because the number of instances has reached the limit.");
-    }
-    let (_, instance) =
-        Plugin::instantiate(&mut mutate_state.store, &component, &mutate_state.linker)
-            .with_context(|| format!("Failed to instantiate the WASM file {}", file_path))?;
-
-    Ok(mutate_state.instances.insert(instance) as i32)
-}
-
-fn wasm_call_func_impl<NO>(instance_id: i32, func_name: &str, args: &[NO]) -> Result<NvimObject>
-where
-    NO: Borrow<NvimObject>,
-{
-    if instance_id < 0 {
-        bail!("Instance ID should be non-negative, got {instance_id}")
-    }
-    let mut mutate_state = state().mutate_state.lock().expect(MUTEX_POISONED_ERR);
-    let instance = *mutate_state
-        .instances
-        .get(instance_id as usize)
-        .with_context(|| format!("Cannot find instance with ID = {instance_id}"))?;
-    mutate_state
-        .store
-        .data_mut()
-        .set_current_instance_id(instance_id);
-
-    let func: TypedFunc<(Vec<nvim_api::Object>,), (nvim_api::Object,)> = instance
-        .get_func(&mut mutate_state.store, func_name)
-        .with_context(|| format!("Cannot find function {func_name} in instance {instance_id}"))?
-        .typed(&mut mutate_state.store)
-        .with_context(|| {
-            format!("The function {func_name} is not a function of type list<object> -> object")
-        })?;
-    let context = mutate_state.store.data().conversion_context();
-    let args = args
-        .iter()
-        .map(|obj| Ok(obj.borrow().clone().try_into_wasm_type(&context)?))
-        .collect::<Result<Vec<_>>>()?;
-
-    let (result,) = func.call(&mut mutate_state.store, (args,)).with_context(|| {
-      format!("The function call to {func_name} trapped (an runtime exception is raised) or failed")
-    })?;
-    Ok(NvimObject::from_wasm_type(result, &context))
-}
+const WASM_CLIENT_CALLBACK_INTERFACE: &str = "nvim:api/client-callback-impl";
 
 // This generates all the types and interface defined in the wit file.
-wasmtime::component::bindgen!("plugin");
-
-/// Implements the host bindings.
-///
-/// See `wit/nvim.wit` for the definition of the host bindings.
-struct NvimHost {
-    current_instance_id: i32,
-}
-
-impl NvimHost {
-    fn set_current_instance_id(&mut self, instance_id: i32) {
-        self.current_instance_id = instance_id;
-    }
-
-    fn conversion_context(&self) -> types::Context {
-        types::Context {
-            current_instance_id: self.current_instance_id,
-        }
-    }
-}
-
-include!(concat!(env!("OUT_DIR"), "/api_impl.rs"));
-
-impl nvim_types::Host for NvimHost {}
-impl nvim_keysets::Host for NvimHost {}
+wasmtime::component::bindgen!("guest");

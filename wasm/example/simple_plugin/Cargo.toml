@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen", version = "0.8.0" }
+wit-bindgen = { git = "https://github.com/bytecodealliance/wit-bindgen" }
 #
 # [profile.dev]
 # panic = "abort"

@@ -2,7 +2,7 @@ package nvim:api
 
 interface nvim-api {
   use nvim-types.{primitive, array, dictionary, object, buffer, window, tabpage}
-use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-extmark, %keyset-keymap, %keyset-get-commands, %keyset-user-command, %keyset-float-config, %keyset-runtime, %keyset-eval-statusline, %keyset-option, %keyset-highlight, %keyset-highlight-cterm, %keyset-get-highlight, %keyset-clear-autocmds, %keyset-create-autocmd, %keyset-exec-autocmds, %keyset-get-autocmds, %keyset-create-augroup, %keyset-cmd, %keyset-cmd-magic, %keyset-cmd-mods, %keyset-cmd-mods-filter, %keyset-cmd-opts, %keyset-echo-opts, %keyset-exec-opts}
+  use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-extmark, %keyset-keymap, %keyset-get-commands, %keyset-user-command, %keyset-float-config, %keyset-runtime, %keyset-eval-statusline, %keyset-option, %keyset-highlight, %keyset-highlight-cterm, %keyset-get-highlight, %keyset-clear-autocmds, %keyset-create-autocmd, %keyset-exec-autocmds, %keyset-get-autocmds, %keyset-create-augroup, %keyset-cmd, %keyset-cmd-magic, %keyset-cmd-mods, %keyset-cmd-mods-filter, %keyset-cmd-opts, %keyset-echo-opts, %keyset-exec-opts}
 
   /// Corresponds to `nvim_get_autocmds`.
   ///
@@ -885,7 +885,12 @@ use nvim-keysets.{%keyset-context, %keyset-set-decoration-provider, %keyset-set-
   %nvim-win-set-hl-ns: func(%window: window, %ns-id: s64) -> result<_, string>
 }
 
-world plugin {
+world guest {
   import nvim-api
 }
 
+world with-callbacks {
+  use nvim-types.{callback-ref}
+  export guest-callback
+  import test-register-callback: func(callback-ref: u32)
+}

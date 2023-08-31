@@ -4,7 +4,7 @@ wit_bindgen::generate!("plugin");
 
 struct MyPlugin;
 
-
+// fn callback_to_id(
 
 impl Plugin for MyPlugin {
     fn run(_args: Vec<Object>) -> Object {

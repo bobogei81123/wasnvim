@@ -1,10 +1,13 @@
 package example:call-func
 
 use nvim:api/nvim-api
+use nvim:api/nvim-types
 
 world plugin {
   import nvim-api
   use nvim-api.{object}
+  use nvim-types.{callback}
 
-  export run: func(args: list<object>) -> object
+  // export run: func(args: list<object>) -> object
+  // export component-call-callback: func(handle: callback, args: list<object>)
 }

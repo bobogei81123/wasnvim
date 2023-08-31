@@ -423,6 +423,11 @@ impl NvimApiType {
             nvim_sys::ObjectType_kObjectTypeFloat => Self::Float,
             nvim_sys::ObjectType_kObjectTypeString => Self::String,
             nvim_sys::ObjectType_kObjectTypeDictionary => Self::Dictionary,
+            nvim_sys::ObjectType_kObjectTypeArray => Self::Array,
+            nvim_sys::ObjectType_kObjectTypeBuffer => Self::Buffer,
+            nvim_sys::ObjectType_kObjectTypeWindow => Self::Window,
+            nvim_sys::ObjectType_kObjectTypeTabpage => Self::Tabpage,
+            nvim_sys::ObjectType_kObjectTypeWasmRef => Self::WasmRef,
             _ => panic!("Unsupported or Unknown type ({}).", value),
         }
     }

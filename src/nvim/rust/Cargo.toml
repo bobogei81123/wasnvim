@@ -1,6 +1,7 @@
 [workspace]
 
 members = ["nvim-wasm", "nvim-sys", "nvim-rs", "gen-api-func-lib"]
+resolver = "2"
 
 [workspace.dependencies]
 nvim-rs = { path = "nvim-rs" }

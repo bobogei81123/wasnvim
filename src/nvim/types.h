@@ -22,8 +22,10 @@ typedef int LuaRef;
 // not needed anymore!
 typedef struct {
   int instance_id;
-  int ref;
+  uint32_t ref;
 } WasmRef;
+
+// #define WASM_NOREF ((WasmRef){ .instance_id = -1, .ref = 0 })
 
 /// Type used for Vimscript VAR_FLOAT values
 typedef double float_T;

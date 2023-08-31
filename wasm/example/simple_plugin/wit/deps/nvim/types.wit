@@ -51,4 +51,8 @@ interface nvim-types {
   /// /// This will be called once the callback is not needed by Neovim.
   /// component-free-callback(handle: callback, args: list<object>)
   type callback = s32
+
+  resource on-input-callback {
+    call: func(self: borrow<on-input-callback>, fn-name: string, term: s32, bufnr: s32, data: string)
+  }
 }

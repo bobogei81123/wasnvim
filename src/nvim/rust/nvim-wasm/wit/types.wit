@@ -13,7 +13,7 @@ interface nvim-types {
     buffer(buffer),
     window(window),
     tabpage(tabpage),
-    wasmref(callback),
+    wasmref(callback-ref),
   }
 
   type array = list<primitive>
@@ -34,21 +34,12 @@ interface nvim-types {
     buffer(buffer),
     window(window),
     tabpage(tabpage),
-    wasmref(callback),
+    wasmref(callback-ref),
   }
 
-  /// Represents callbacks that can be call from Neovim.
+  /// Represents guest callbacks that can be call from Neovim.
   ///
-  /// This is a temporary workaround before we have resource types. The number
-  /// is the handle referring to the callback function. If this type is used,
-  /// two additional functions should be defined:
-  ///
-  /// /// Invokes the callback function represented by the handle `callback`.
-  /// component-call-callback(handle: callback, args: list<object>)
-  ///
-  /// /// Frees the callback.
-  /// ///
-  /// /// This will be called once the callback is not needed by Neovim.
-  /// component-free-callback(handle: callback, args: list<object>)
-  type callback = s32
+  /// The guest should also implement the `guest-callback` interface defined in
+  /// `guest-callback.wit`.
+  type callback-ref = u32
 }

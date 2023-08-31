@@ -1712,8 +1712,8 @@ bool tv_callback_equal(const Callback *cb1, const Callback *cb2)
     // FIXME: this is inconsistent with tv_equal but is needed for precision
     // maybe change dictwatcheradd to return a watcher id instead?
     return cb1->data.partial == cb2->data.partial;
-  case kCallbackLua:
-    return cb1->data.luaref == cb2->data.luaref;
+  case kCallbackExternal:
+    return external_callback_eq(cb1, cb2);
   case kCallbackNone:
     return true;
   }
@@ -1733,8 +1733,8 @@ void callback_free(Callback *callback)
   case kCallbackPartial:
     partial_unref(callback->data.partial);
     break;
-  case kCallbackLua:
-    NLUA_CLEAR_REF(callback->data.luaref);
+  case kCallbackExternal:
+    api_free_external_callback(*callback);
     break;
   case kCallbackNone:
     break;
@@ -1758,7 +1758,7 @@ void callback_put(Callback *cb, typval_T *tv)
     tv->vval.v_string = xstrdup(cb->data.funcref);
     func_ref(cb->data.funcref);
     break;
-  case kCallbackLua:
+  case kCallbackExternal:
   // TODO(tjdevries): Unified Callback.
   // At this point this isn't possible, but it'd be nice to put
   // these handled more neatly in one place.
@@ -1784,8 +1784,8 @@ void callback_copy(Callback *dest, Callback *src)
     dest->data.funcref = xstrdup(src->data.funcref);
     func_ref(src->data.funcref);
     break;
-  case kCallbackLua:
-    dest->data.luaref = api_new_luaref(src->data.luaref);
+  case kCallbackExternal:
+    dest->data.external = external_callback_copy(src->data.external);
     break;
   default:
     dest->data.funcref = NULL;
@@ -1796,8 +1796,8 @@ void callback_copy(Callback *dest, Callback *src)
 /// Generate a string description of a callback
 char *callback_to_string(Callback *cb)
 {
-  if (cb->type == kCallbackLua) {
-    return nlua_funcref_str(cb->data.luaref);
+  if (cb->type == kCallbackExternal) {
+    return external_callback_to_string(cb->data.external);
   }
 
   const size_t msglen = 100;

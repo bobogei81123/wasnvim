@@ -13,7 +13,7 @@ unsafe impl NvimFfiClone for nvim_sys::WasmRef {
 }
 
 impl NvimWasmRef {
-    pub fn new(instance_id: i32, ref_: i32) -> Self {
+    pub fn new(instance_id: i32, ref_: u32) -> Self {
         unsafe { Self::from_ffi(nvim_sys::WasmRef { instance_id, ref_ }) }
     }
 }

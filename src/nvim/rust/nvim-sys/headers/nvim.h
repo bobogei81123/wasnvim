@@ -7,6 +7,7 @@
 #include "nvim/api/options.h"
 #include "nvim/api/private/defs.h"
 #include "nvim/api/private/helpers.h"
+#include "nvim/api/private/validate.h"
 #include "nvim/api/tabpage.h"
 #include "nvim/api/ui.h"
 #include "nvim/api/vim.h"

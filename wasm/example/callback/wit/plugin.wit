@@ -1,9 +1,10 @@
-package example:call-func
+package example:callback
 
 world my-plugin {
   use nvim:api/nvim-types.{object}
 
   include nvim:api/plugin
+  include nvim:api/with-callbacks
 
   export run: func(args: list<object>) -> object
 }

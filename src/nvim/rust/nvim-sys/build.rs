@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         builder = builder.clang_arg(format!("-I{}", dir.to_str().unwrap()));
     }
 
-    const TYPE_ALLOWLIST: [&str; 8] = [
+    let type_allowlist: Vec<&str> = vec![
         "Arena",
         "Array",
         "Dictionary",
@@ -35,11 +35,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "String",
         "WasmRef",
     ];
-    const NON_COPY_TYPE: [&str; 6] = ["Arena", "String", "Array", "Error", "Dictionary", "Object"];
+    let non_copy_type: Vec<&str> =
+        vec!["Arena", "String", "Array", "Error", "Dictionary", "Object"];
 
     let api_functions = gen_api_func_lib::api_functions();
     let function_allowlist = [
         "api_clear_error",
+        "api_err_invalid",
         "api_free_array",
         "api_free_dictionary",
         "api_free_object",
@@ -63,10 +65,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .chain(api_functions.iter().map(|f| f.name.as_str()));
     const VAR_ALLOWLIST: [&str; 1] = ["e_outofmem"];
 
-    for type_ in TYPE_ALLOWLIST {
+    for type_ in type_allowlist {
         builder = builder.allowlist_type(type_);
     }
-    for type_ in NON_COPY_TYPE {
+    for type_ in non_copy_type {
         builder = builder.no_copy(type_);
     }
     for function in function_allowlist {

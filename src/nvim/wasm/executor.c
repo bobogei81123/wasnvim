@@ -6,11 +6,6 @@
 #include "nvim/message.h"
 #include "nvim/rust/nvim-wasm/include/wasm-rs.h"
 
-void wasm_init(void)
-{
-  wasm_rs_init();
-}
-
 void ex_wasm(exarg_T *const eap) FUNC_ATTR_NONNULL_ALL
 {
   char *file_path = eap->arg;

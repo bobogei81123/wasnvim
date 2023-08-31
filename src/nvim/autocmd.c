@@ -1973,7 +1973,7 @@ static void aucmd_next(AutoPatCmd *apc)
 static bool call_autocmd_callback(const AutoCmd *ac, const AutoPatCmd *apc)
 {
   Callback callback = ac->exec.callable.cb;
-  if (callback.type == kCallbackLua) {
+  if (callback.type == kCallbackExternal) {
     Dictionary data = ARRAY_DICT_INIT;
     PUT(data, "id", INTEGER_OBJ(ac->id));
     PUT(data, "event", CSTR_TO_OBJ(event_nr2name(apc->event)));
@@ -2002,7 +2002,7 @@ static bool call_autocmd_callback(const AutoCmd *ac, const AutoPatCmd *apc)
     MAXSIZE_TEMP_ARRAY(args, 1);
     ADD_C(args, DICTIONARY_OBJ(data));
 
-    Object result = nlua_call_ref(callback.data.luaref, NULL, args, true, NULL);
+    Object result = external_callback_call(callback.data.external, NULL, args, true);
     bool ret = false;
     if (result.type == kObjectTypeBoolean) {
       ret = result.data.boolean;

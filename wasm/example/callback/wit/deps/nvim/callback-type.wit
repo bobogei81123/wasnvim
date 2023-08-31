@@ -1,0 +1,8 @@
+package nvim:api
+
+interface client-callback-impl {
+  use nvim-types.{callback, object}
+
+  drop-callback: func(callback-ref: callback)
+  call-callback: func(callback-ref: callback, args: list<object>)
+}

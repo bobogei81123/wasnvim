@@ -1,0 +1,8 @@
+package nvim:api
+
+interface guest-callback {
+  use nvim-types.{callback-ref, object}
+
+  drop-callback: func(callback-ref: callback-ref)
+  call-callback: func(callback-ref: callback-ref, args: list<object>) -> object
+}

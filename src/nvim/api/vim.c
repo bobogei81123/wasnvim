@@ -957,7 +957,7 @@ static void term_write(char *buf, size_t size,
   ADD_C(args, BUFFER_OBJ(terminal_buf(chan->term)));
   ADD_C(args, STRING_OBJ(((String){ .data = buf, .size = size })));
   textlock++;
-  external_callback_call(cb, "input", args);
+  (void)external_callback_call(cb, "input", args);
   textlock--;
 }
 
