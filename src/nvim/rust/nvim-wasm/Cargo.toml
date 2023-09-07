@@ -8,6 +8,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 anyhow = "1.0.71"
+extend = "1.2.0"
 nvim-rs = { workspace = true }
 nvim-sys = { workspace = true }
 slab = "0.4.8"

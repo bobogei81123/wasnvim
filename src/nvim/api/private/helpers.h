@@ -60,6 +60,10 @@
     .type = kObjectTypeLuaRef, \
     .data.luaref = r })
 
+#define WASMREF_OBJ(r) ((Object) { \
+    .type = kObjectTypeWasmRef, \
+    .data.wasmref = r })
+
 #define NIL ((Object)OBJECT_INIT)
 #define NULL_STRING ((String)STRING_INIT)
 

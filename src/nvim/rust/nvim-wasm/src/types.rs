@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::nvim_types;
+use crate::{
+    nvim_types,
+    wasm_ref::{wasmref_new, WasmRefInner},
+};
 use nvim_rs::{
     IntoObject, NvimApiType, NvimArray, NvimBuffer, NvimDictionary, NvimObject, NvimObjectEnum,
     NvimObjectEnumRef, NvimString, NvimTabpage, NvimWindow, ObjectConversionError, TryFromObject,
@@ -324,14 +327,14 @@ impl TryIntoWasmType<nvim_types::Object> for NvimObject {
                 Tabpage(tabpage.try_into_wasm_type(context).unwrap())
             }
             NvimObjectEnum::WasmRef(wasmref) => {
-                if wasmref.instance_id != context.current_instance_id {
-                    return Err(TypeConversionError::InstanceIdMismatch {
-                        current: context.current_instance_id,
-                        wasmref: wasmref.instance_id,
-                    });
-                }
-
-                Wasmref(wasmref.ref_)
+                let wasmref = unsafe { (wasmref as *const WasmRefInner).as_ref() };
+                Wasmref(wasmref.map_or(0, |WasmRefInner { instance_id, ref_ }| {
+                    if *instance_id != context.current_instance_id {
+                        0
+                    } else {
+                        *ref_
+                    }
+                }))
             }
             _ => unimplemented!("Encounter a new Neovim type"),
         })
@@ -359,15 +362,15 @@ impl TryIntoWasmType<nvim_types::Object> for &NvimObject {
             NvimObjectEnumRef::Tabpage(tabpage) => {
                 Tabpage(tabpage.try_into_wasm_type(context).unwrap())
             }
-            NvimObjectEnumRef::WasmRef(wasmref) => {
-                if wasmref.instance_id != context.current_instance_id {
-                    return Err(TypeConversionError::InstanceIdMismatch {
-                        current: context.current_instance_id,
-                        wasmref: wasmref.instance_id,
-                    });
-                }
-
-                Wasmref(wasmref.ref_)
+            NvimObjectEnumRef::WasmRef(&wasmref) => {
+                let wasmref = unsafe { (wasmref as *const WasmRefInner).as_ref() };
+                Wasmref(wasmref.map_or(0, |WasmRefInner { instance_id, ref_ }| {
+                    if *instance_id != context.current_instance_id {
+                        0
+                    } else {
+                        *ref_
+                    }
+                }))
             }
             _ => unimplemented!("Encounter a new Neovim type"),
         })
@@ -389,10 +392,9 @@ impl FromWasmType<nvim_types::Object> for NvimObject {
             Buffer(buffer) => NvimObjectEnum::Buffer(<_>::from_wasm_type(buffer, context)),
             Window(window) => NvimObjectEnum::Window(<_>::from_wasm_type(window, context)),
             Tabpage(tabpage) => NvimObjectEnum::Tabpage(<_>::from_wasm_type(tabpage, context)),
-            Wasmref(wasmref) => NvimObjectEnum::WasmRef(nvim_sys::WasmRef {
-                instance_id: context.current_instance_id,
-                ref_: wasmref,
-            }),
+            Wasmref(wasmref) => {
+                NvimObjectEnum::WasmRef(wasmref_new(context.current_instance_id, wasmref))
+            }
         })
     }
 }
@@ -470,10 +472,9 @@ impl FromWasmType<nvim_types::Primitive> for NvimObject {
             Buffer(buffer) => NvimObjectEnum::Buffer(<_>::from_wasm_type(buffer, context)),
             Window(window) => NvimObjectEnum::Window(<_>::from_wasm_type(window, context)),
             Tabpage(tabpage) => NvimObjectEnum::Tabpage(<_>::from_wasm_type(tabpage, context)),
-            Wasmref(wasmref) => NvimObjectEnum::WasmRef(nvim_sys::WasmRef {
-                instance_id: context.current_instance_id,
-                ref_: wasmref,
-            }),
+            Wasmref(wasmref) => {
+                NvimObjectEnum::WasmRef(wasmref_new(context.current_instance_id, wasmref))
+            }
         })
     }
 }

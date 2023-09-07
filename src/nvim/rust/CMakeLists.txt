@@ -74,6 +74,7 @@ ExternalProject_Add(
 	BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}
 	BUILD_ALWAYS ON
 	BUILD_BYPRODUCTS ${NVIM_RUST_BUILD_PRODUCTS})
+add_dependencies(nvim-rs-crates generated-sources)
 add_library(nvim-rs INTERFACE)
 add_dependencies(nvim-rs nvim-rs-crates)
 

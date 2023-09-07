@@ -23,7 +23,9 @@ typedef int LuaRef;
 typedef struct {
   int instance_id;
   uint32_t ref;
-} WasmRef;
+} WasmRefInner;
+
+typedef const WasmRefInner *WasmRef;
 
 // #define WASM_NOREF ((WasmRef){ .instance_id = -1, .ref = 0 })
 

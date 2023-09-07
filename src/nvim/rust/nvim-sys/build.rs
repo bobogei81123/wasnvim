@@ -34,6 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "KeyValuePair",
         "String",
         "WasmRef",
+        "WasmRefInner",
     ];
     let non_copy_type: Vec<&str> =
         vec!["Arena", "String", "Array", "Error", "Dictionary", "Object"];

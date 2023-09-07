@@ -17,7 +17,7 @@ use wasmtime::{
 
 mod runtime;
 mod types;
-pub mod wasmref;
+pub mod wasm_ref;
 
 /// Initializes the Nvim WASM module.
 ///
@@ -101,6 +101,9 @@ pub unsafe extern "C" fn wasm_call_wasmref(
     name: *const c_char,
     args: nvim_sys::Array,
 ) -> nvim_sys::Object {
+    let Some(wasmref) = wasm_ref::from_sys(wasmref) else {
+        return NvimObject::nil().into_ffi();
+    };
     let mut name_appended_args = Vec::<&NvimObject>::new();
     let callback_name_obj = name.as_ref().map(|s| {
         NvimString::new(

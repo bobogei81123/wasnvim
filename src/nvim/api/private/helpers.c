@@ -590,7 +590,7 @@ void api_free_object(Object value)
     break;
 
   case kObjectTypeWasmRef:
-    api_free_wasmref(value.data.wasmref);
+    wasmref_drop(value.data.wasmref);
     break;
 
   default:
@@ -762,7 +762,6 @@ Object copy_object(Object obj, Arena *arena)
   case kObjectTypeBoolean:
   case kObjectTypeInteger:
   case kObjectTypeFloat:
-  case kObjectTypeWasmRef:
     return obj;
 
   case kObjectTypeString:
@@ -776,6 +775,9 @@ Object copy_object(Object obj, Arena *arena)
 
   case kObjectTypeLuaRef:
     return LUAREF_OBJ(api_new_luaref(obj.data.luaref));
+
+  case kObjectTypeWasmRef:
+    return WASMREF_OBJ(wasmref_clone(obj.data.wasmref));
 
   default:
     abort();
@@ -1018,10 +1020,10 @@ ExternalCallback object_to_external_callback(Object *obj, const char *what, Erro
     callback.data.luaref = obj->data.luaref;
     obj->data.luaref = LUA_NOREF;
   } else if (obj->type == kObjectTypeWasmRef) {
-    VALIDATE_S(obj->data.wasmref.instance_id >= 0, what, "<no value>", return callback);
+    VALIDATE_S(obj->data.wasmref != NULL, what, "<no value>", return callback);
     callback.type = kExternalCallbackTypeWasm;
     callback.data.wasmref = obj->data.wasmref;
-    obj->data.wasmref = WASM_NOREF;
+    obj->data.wasmref = NULL;
   } else {
     VALIDATE_EXP(false, what, "LuaRef or WasmRef", NULL, ;);
   }
@@ -1040,7 +1042,11 @@ Object external_callback_to_object(ExternalCallback cb)
       return NIL;
     }
   case kExternalCallbackTypeWasm:
-    return NIL;
+    if (cb.data.wasmref != NULL) {
+      return WASMREF_OBJ(cb.data.wasmref);
+    } else {
+      return NIL;
+    }
   }
 }
 
@@ -1052,7 +1058,7 @@ bool external_callback_is_none(ExternalCallback cb)
   case kExternalCallbackTypeLua:
     return cb.data.luaref == LUA_NOREF;
   case kExternalCallbackTypeWasm:
-    return cb.data.wasmref.instance_id < 0;
+    return cb.data.wasmref == NULL;
   }
 }
 
@@ -1083,11 +1089,7 @@ bool external_callback_eq(ExternalCallback cb1, ExternalCallback cb2)
   case kExternalCallbackTypeLua:
     return cb1.data.luaref == cb2.data.luaref;
   case kExternalCallbackTypeWasm:
-    if (cb1.data.wasmref.instance_id < 0 || cb2.data.wasmref.instance_id < 0) {
-      return cb1.data.wasmref.instance_id < 0 && cb2.data.wasmref.instance_id < 0;
-    }
-    return cb1.data.wasmref.instance_id == cb2.data.wasmref.instance_id
-           && cb1.data.wasmref.ref == cb2.data.wasmref.ref;
+    return wasmref_eq(cb1.data.wasmref, cb2.data.wasmref);
   }
 }
 
@@ -1100,7 +1102,7 @@ void api_free_external_callback(ExternalCallback cb)
     api_free_luaref(cb.data.luaref);
     return;
   case kExternalCallbackTypeWasm:
-    api_free_wasmref(cb.data.wasmref);
+    wasmref_drop(cb.data.wasmref);
     return;
   }
 }
@@ -1119,7 +1121,7 @@ Object external_callback_call(ExternalCallback cb, const char *name, Array args,
 {
   switch (cb.type) {
   case kExternalCallbackTypeNone:
-    return;
+    return NIL;
   case kExternalCallbackTypeLua:
     return nlua_call_ref(cb.data.luaref, name, args, retval, NULL);
   case kExternalCallbackTypeWasm:
